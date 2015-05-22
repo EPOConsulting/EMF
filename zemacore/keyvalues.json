@@ -1,0 +1,56 @@
+{
+    "LAGERTYP":
+    {
+	    "001":"Hochregallager",
+	    "002":"Regallager",
+	    "003":"Freilager",
+	    "004":"Blocklager"
+    },
+    "LVS_ISTAT":
+    {
+        "N":"nicht gezaehlt",
+        "A":"angezaehlt",
+        "Z":"gezaehlt",
+		"L":"ausgebucht",
+        "S":"storniert",
+        "D":"Dynamic Cycle Count"
+    },
+    "IH_AUFART":
+    {
+    	"PM01":"PM01 geplante Instandhaltungst&auml;tigkeiten W I",
+    	"PM02":"PM02 ungeplante Instandhaltungst&auml;tigkeiten"
+    },
+    "IH_AUFART2":
+    {
+    	"PM01":"PM01 geplante Instandhaltungst&auml;tigkeiten W I",
+    	"PM02":"PM02 ungeplante Instandhaltungst&auml;tigkeiten",
+    	"PM03":"PM03 Instandhaltungsfremde T&auml;tigkeiten",
+    	"PM04":"PM04 Festpreisauftr&auml;ge",
+    	"PM05":"PM05 PM-Investitionen",
+    	"PM06":"PM06 PM-Reparaturen Reserveteile",
+    	"PM07":"PM07 Externe Kundenauftr&auml;ge f&uuml;r TC"
+    },
+    "IH_PRIORITAET":
+    {
+		"1":"1 Schicht 1",
+		"2":"2 Schicht 2",
+		"3":"3 Schicht 3",
+		"A":"A Arbeitssicherheit",
+		"F":"F FPM",
+		"J":"J Jahresauftrag",
+		"R":"R Revision",
+		"W":"W aus PM01-Auftrag"
+    },
+    "STORNOGRUENDE":
+    {
+    	"Fehlbuchung":"Fehlbuchung",
+		"falsche Stundeneingabe":"falsche Stundeneingabe",
+		"falscher Auftrag":"falscher Auftrag"
+    },
+    "AUFTRAGSSTATI":
+    {
+    	"o":"offen",
+    	"i":"in Arbeit",
+    	"a":"abgeschlossen"
+    }
+}
