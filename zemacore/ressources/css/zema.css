@@ -223,6 +223,9 @@ div{
 .navdivt:hover {
 	height: 3em;
 }
+.wnav {
+	width: 95%;
+}
 .navbar {
 	font-family: clear_sans_lightregular;
 	font-size: 1em;

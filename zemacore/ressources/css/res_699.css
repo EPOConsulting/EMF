@@ -73,6 +73,9 @@ body {
 .navstatus {
 	display: none;
 }
+.wnav {
+	width: 90%;
+}
 .bc {
 	top:0px; 
 	left:0px;

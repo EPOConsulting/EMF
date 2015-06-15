@@ -411,26 +411,14 @@ ema.datamanager = (function () {
         $('#syncgreen').show();
         $('#syncyellow').hide();
         $('#syncred').hide();
-        $('#statusdb_sync').addClass('green');
-        $('#statusdb_sync').removeClass('yellow');
-        $('#statusdb_sync').removeClass('red');
-        $('#statusdb_sync').removeClass('darkgrey');
       } else if (currStatus === 2) {
         $('#syncgreen').hide();
         $('#syncyellow').show();
         $('#syncred').hide();
-        $('#statusdb_sync').removeClass('green');
-        $('#statusdb_sync').addClass('yellow');
-        $('#statusdb_sync').removeClass('red');
-        $('#statusdb_sync').removeClass('darkgrey');
       } else if (currStatus === 3) {
         $('#syncgreen').hide();
         $('#syncyellow').hide();
         $('#syncred').show();
-        $('#statusdb_sync').removeClass('green');
-        $('#statusdb_sync').removeClass('yellow');
-        $('#statusdb_sync').addClass('red');
-        $('#statusdb_sync').removeClass('darkgrey');
       }
       if (syncTime > 0) {
         $('#synctime').html(ema.shell.getLanguageTextString('allgemein', 'lbllastsync') + ': ' + ema.model.formatDateTimeForDisplay(syncTime));

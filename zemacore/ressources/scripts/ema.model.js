@@ -218,10 +218,13 @@ ema.model = (function () {
   /*
    * generates an URI for a request to EPO Search in SAP
    */
-  generateSearchURL = function (table, searchVal) {
+  generateSearchURL = function (table, searchVal, limit) {
     try {
       var reqURL;
       
+      if (limit === undefined) {
+        limit = 20;
+      }
       reqURL = '';
       reqURL += ema.shell.getConfigMapConfigValue('HOSTPROTOCOL') + '://';
       reqURL += ema.shell.getConfigMapConfigValue('HOSTURL') + ':';
@@ -232,9 +235,9 @@ ema.model = (function () {
       reqURL += "&sap-language=" + ema.shell.getStateMapValue('selected_language').toLowerCase();
       reqURL += "&timeout=" + ema.shell.getConfigMapConfigValue('HOSTTIMEOUT');
       reqURL += "&format=1";
-      reqURL += "&limit=20";
+      reqURL += "&limit=" + limit;
       reqURL += "&table=" + table;
-      reqURL += "&showperpage=20";
+      reqURL += "&showperpage=" + limit;
       reqURL += "&page=1";
       reqURL += "&sequence=10";
       reqURL += "&key=" + window.btoa(unescape(encodeURIComponent(searchVal)));

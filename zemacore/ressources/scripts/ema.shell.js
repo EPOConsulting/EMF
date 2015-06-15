@@ -64,7 +64,7 @@ ema.shell = (function () {
   showDialog, resetReqSourcePath, resizeCanvas, 
   updateSyncScreen, gotoMenu, showLoadingAnimLayer,
   hideLoadingAnimLayer, showHideBreadcrumb, checkStyleForHeaderAndFooter,
-  showHideHeader, showHideFooter;
+  showHideHeader, showHideFooter, confirmLogout;
 
   /** INTERNAL FUNCTIONS**********************************************************************************************************************************************/
   // Begin INTERNAL method /generateHTML/
@@ -77,7 +77,9 @@ ema.shell = (function () {
       '<div class="hidden" id="navmenu"><button class="button_nok" onclick="ema.shell.showHideHeader()"><i class="icon-angle-up" id="btnnavmenu"></i></button></i></div>' + 
       '<div class="w100p navdiv" id="navdiv">' + 
       '<div class="navbar" id="navbar"></div>' +
-      '<div class="navstatus" id="statusdb"><div class="w50p"><i id="statusdb_online" class="icon-off darkgrey"></i></div><div class="w50p"><i id="statusdb_sync" class="icon-exchange darkgrey"></i></div></div>' +
+      '<div class="navstatus" id="statusdb">' + 
+      '<div class="w50p"><i id="statusdb_online" class="icon-wifi darkgrey"></i></div>' + 
+      '<div class="w50p"><a onclick="ema.shell.confirmLogout()"><i class="icon-off darkgrey"></i></a></div></div>' + 
       '<div class="dbswitch"><button class="button_nok" onclick="ema.shell.showHideDashboard()"><i class="icon-cog" id="btnDashboard"></i></button></div>' +
       '<div class="w5p h2">&nbsp;</div>' +
       '<div class="w90p darkgreybg h2">&nbsp;</div>' +
@@ -108,6 +110,20 @@ ema.shell = (function () {
       '<div class="w100p">' +
       '<div class="signaturebutton"><button class="button_nok w100p lblbuttoncancel" onclick="ema.shell.showDialog(\'ema_save_confirm\');"></button></div>' + 
       '<div class="signaturebutton"><button class="button_ok w100p lblbuttonproceed" onclick="ema.shell.showDialog(\'ema_save_confirm\');ema.shell.changeHashSub();"></button></div>' + 
+      '</div>' +
+      '</div>' +
+      '</div>' + 
+      '</div>' + 
+      //LogoutConfirm-Layer
+      '<div id="ema_logout_confirm" class="hidden">' +  
+      '<div class="overlayinner">' +
+      '<div class="hcontent overlaycontent w50p">' +
+      '<div class="w80p overlayhead">&nbsp;</div>' +
+      '<div class="w20p overlayhead r"><a onclick="ema.shell.showDialog(\'ema_logout_confirm\')" class="tbg"><i class="icon-cancel"></i></a></div>' +
+      '<div class="w100p lbllogoutconfirm c">&nbsp;</div>' +
+      '<div class="w100p">' +
+      '<div class="signaturebutton"><button class="button_nok w100p lblbuttoncancel" onclick="ema.shell.showDialog(\'ema_logout_confirm\');"></button></div>' + 
+      '<div class="signaturebutton"><button class="button_ok w100p lblbuttonproceed" onclick="ema.shell.showDialog(\'ema_logout_confirm\');ema.shell.logout();"></button></div>' + 
       '</div>' +
       '</div>' +
       '</div>' + 
@@ -529,12 +545,12 @@ ema.shell = (function () {
         htmlSync += '<div id="syncgreen" class="w100p lblsyncgreen green"></div>';
         htmlSync += '<div id="syncyellow" class="w100p lblsyncyellow yellow" style="display:none"></div>';
         htmlSync += '<div id="syncred" class="w100p lblsyncred red" style="display:none"></div>';
-        htmlSync += '<div id="synctime" class="w100p dbsynctime">&nbsp;</div>';
-        htmlSync += '<div class="w100p dbsynctime"><a onclick="ema.shell.changeHash(ema.shell.getConfigMapConfigValue(\'COREPATH\') + \'modules/ema.sync\', undefined)" class="lblsyncinfo"></a></div>';
+        htmlSync += '<div id="synctime" class="w100p ">&nbsp;</div>';
+        htmlSync += '<div class="w100p"><a onclick="ema.shell.changeHash(ema.shell.getConfigMapConfigValue(\'COREPATH\') + \'modules/ema.sync\', undefined)" class="lblsyncinfo"></a></div>';
         if (stateMap.isUserOnline === true && stateMap.isAppOnline === true) {
-          htmlSync += '<div class="w100p dbsynctime"><a onclick="ema.shell.showHideDashboard();ema.datamanager.startSynchronisation(\'both\')" class="lbldosync"></a></div>';
+          htmlSync += '<div class="w100p"><a onclick="ema.shell.showHideDashboard();ema.datamanager.startSynchronisation(\'both\')" class="lbldosync"></a></div>';
         } else {
-          htmlSync += '<div class="w100p dbsynctime"><span class="lbldosync"></span></div>';
+          htmlSync += '<div class="w100p"><span class="lbldosync"></span></div>';
         }
         htmlSync += '</div>';
       } else {
@@ -1512,7 +1528,7 @@ ema.shell = (function () {
   checkStyleForHeaderAndFooter = function () {
     try {
       if (ema.model.loadFromLocalStorage('setupValueShowHeader') === 'false') {
-        $('#navdiv').addClass('w95p navdivt');
+        $('#navdiv').addClass('wnav navdivt');
         $('#navdiv').removeClass('w100p navdiv');
         $('#navmenu').addClass('dbswitch navdiv');
         $('#navmenu').removeClass('hidden');
@@ -1520,7 +1536,7 @@ ema.shell = (function () {
         $('#ema_content').removeClass('contentt3');
       } else {
         $('#navdiv').addClass('w100p navdiv');
-        $('#navdiv').removeClass('w95p navdivt');
+        $('#navdiv').removeClass('wnav navdivt');
         $('#navmenu').addClass('hidden');
         $('#navmenu').removeClass('dbswitch navdiv');
         $('#ema_content').addClass('contentt3');
@@ -1584,6 +1600,17 @@ ema.shell = (function () {
     }
   };
   // End PUBLIC method /showHideFooter/
+  // Begin PUBLIC method /confirmLogout/
+  confirmLogout = function () {
+    try {
+      if (stateMap.isUserLoggedOn === true) {
+        showDialog('ema_logout_confirm');
+      }
+    } catch (e) {
+      handleError('confirmLogout', e, 'e');
+    }
+  };
+  // End PUBLIC method /confirmLogout/
 
   $(window)
   .bind('hashchange', onHashchange);
@@ -1641,7 +1668,8 @@ ema.shell = (function () {
     showHideBreadcrumb : showHideBreadcrumb,
     checkStyleForHeaderAndFooter : checkStyleForHeaderAndFooter,
     showHideHeader : showHideHeader,
-    showHideFooter : showHideFooter
+    showHideFooter : showHideFooter,
+    confirmLogout : confirmLogout
   };
   //------------------- END PUBLIC METHODS ---------------------
 }());
