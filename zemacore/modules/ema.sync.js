@@ -89,7 +89,7 @@ ema.sync = (function () {
       $('#' + stateMap.container).html(htmlStr);
       
       ema.formgenerator.generateFooter(false, false, '', false, '', '');
-      ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'));
+      ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'), false);
     } catch (e) {
       ema.shell.handleError('ema.sync.generateHtml', e, 'e');
     }

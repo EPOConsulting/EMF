@@ -5,7 +5,8 @@ body {
 	padding: 0px;
 	background-color: #FFFFFF;
 	overflow: auto;
-	color: #4A4A4A;
+	/*color: #4A4A4A;*/
+	color: #000000;
 }
 .contentt,.contentt3,.contentb,.contentb3,.footer,.footert,.header {
 	margin: 0px auto 0px;
@@ -40,6 +41,15 @@ body {
 	font-family: clear_sans_lightregular;
 	color: #E83E2E;
 	text-align: center;
+	padding-left: 20px !important;
+	width: 100%;
+	line-height: 3em;
+}
+.fcontext {
+	font-family: clear_sans_lightregular;
+	/*color: #9B9B9B;*/
+	color: #4A4A4A;
+	text-align: left;
 	padding-left: 20px !important;
 	width: 100%;
 	line-height: 3em;

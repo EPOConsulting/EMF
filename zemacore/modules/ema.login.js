@@ -43,7 +43,11 @@ ema.login = (function () {
       // load HTML and map jQuery collections
       stateMap.container = container;
       ema.shell.addOnloadFunction(path, ema.login.onModuleLoad);
-      ema.shell.addOnloadFocusField(path, 'ema_login_username');
+      if (ema.model.loadFromLocalStorage('last_user') !== '') {
+        ema.shell.addOnloadFocusField(path, 'ema_login_password');
+      } else {
+        ema.shell.addOnloadFocusField(path, 'ema_login_username');
+      }
       $('#' + container).html(configMap.main_html);
       
       if (ema.model.loadFromLocalStorage('uriUsername') !== '' && ema.model.loadFromLocalStorage('uriPassword') !== '') {
@@ -70,11 +74,11 @@ ema.login = (function () {
 
       $('#ema_login_username, #ema_login_password').blur(function () {
         if (this.value.length === 0) {
-          $('#error_' + this.id).show();
+          ema.formgenerator.showError(this.id);
         }
       });
       $('#ema_login_username, #ema_login_password').focus(function () {
-        $('#error_' + this.id).hide();
+        ema.formgenerator.hideError(this.id);
       });
       
       ema.formgenerator.generateFooter(false, false, '', true, 'lblbuttonlogon', 'ema.login.processLogin();');
@@ -107,15 +111,15 @@ ema.login = (function () {
         password = stateMap.uriPassword;
       } else if ($('#ema_login_username').val().length === 0 || $('#ema_login_password').val().length === 0 || $('#ema_login_client').val().length === 0) {
         if ($('#ema_login_username').val().length === 0) {
-          $('#error_ema_login_username').show();
+          ema.formgenerator.showError('ema_login_username');
           doLogin = false;
         }
         if ($('#ema_login_password').val().length === 0) {
-          $('#error_ema_login_password').show();
+          ema.formgenerator.showError('ema_login_password');
           doLogin = false;
         }
         if ($('#ema_login_client').val().length === 0) {
-          $('#error_ema_login_client').show();
+          ema.formgenerator.showError('ema_login_client');
           doLogin = false;
         }
       } else {
@@ -136,9 +140,6 @@ ema.login = (function () {
             dataType: ema.shell.getConfigMapConfigValue('AJAX_DATATYPE'),
             type: ema.shell.getConfigMapConfigValue('AJAX_TYPE'),
             data: ema.model.generateRequestObj(request),
-            beforeSend: function (xhr) {
-              ema.model.generateAuthHeader(xhr, false);
-            },
             success: function (retString) {
               //check if login was successfull
               var 
@@ -148,7 +149,7 @@ ema.login = (function () {
 
               if (retString.EXPORT.E_ERRORMESSAGE === undefined || retString.EXPORT.E_ERRORMESSAGE === '') {
                 ema.shell.hideError();
-                //so error was returnedd
+                //so error was returned
                 ema.shell.setUserLoggedOn(true);
                 //save username&password in localstorage
                 ema.model.saveToLocalStorage('curr_username', username);

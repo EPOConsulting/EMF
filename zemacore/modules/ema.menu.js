@@ -11,7 +11,11 @@ ema.menu = (function () {
       container  : undefined
     },
 
-  initModule, buildMenu, buildMenuEntry;
+  //internal functions
+  buildMenu, buildMenuEntry,
+
+  //public functions
+  initModule, generateMenu;
 
   /** INTERNAL FUNCTIONS**********************************************************************************************************************************************/
   // Begin INTERNAL method /buildMenu/
@@ -81,11 +85,11 @@ ema.menu = (function () {
             ema.shell.addContentDiv(divName, 'menuDiv' + seqParent);
             $('#' + divName).hide();
           }
-          if (buttonNoPerDiv[divName] === undefined) {
-            buttonNoPerDiv[divName] = 1;
-          }
           if (divName === '') {
             divName = 'menuDiv' + seqParent;
+          }
+          if (buttonNoPerDiv[divName] === undefined) {
+            buttonNoPerDiv[divName] = 1;
           }
           //div was created - button can be appended now
           if (linkType === 'url') {
@@ -137,56 +141,7 @@ ema.menu = (function () {
       if (ema.shell.getStateMapValue('isMenuGenerated') === false) {
         //request menu-json from server
         if (ema.shell.getStateMapValue('isUserOnline') === true && ema.shell.getStateMapValue('isAppOnline') === true) {
-          var 
-          requestUrl,
-          request;
-
-          request = {};
-          request.IMPORT = {};
-          request.IMPORT.I_MENU = ema.shell.getConfigMapConfigValue('I_MENU');
-          request.IMPORT.I_FORCE_UPDATE = 'X';
-          request.IMPORT.I_AUTH_CHECK = 'X';
-          request.IMPORT.I_URLS = 'X';
-
-          if (ema.shell.getConfigMapConfigValue('MENUISLOCAL') === 'true') {
-            requestUrl = 'menu.json';
-            $.ajax({
-              url: requestUrl,
-              contentType: 'application/json; charset=UTF-8',
-              dataType: 'html',
-              type: 'GET',
-              data: request,
-              success: function (retString) {
-                //save menu json to local storage
-                retString = eval('(' + decodeURI(retString) + ')');
-                ema.model.saveToLocalStorage('menustring', JSON.stringify(retString));
-                buildMenu(retString);
-              },
-              error: function (xhr, status, errorThrown) {
-                ema.shell.handleWSError('initMenu', xhr, status, errorThrown, 'e');
-              }
-            });
-          } else {
-            requestUrl = ema.model.generateRequestURL('MENU');
-            $.ajax({
-              url: requestUrl,
-              contentType: 'application/json; charset=UTF-8',
-              dataType: ema.shell.getConfigMapConfigValue('AJAX_DATATYPE'),
-              type: ema.shell.getConfigMapConfigValue('AJAX_TYPE'),
-              data: ema.model.generateRequestObj(request),
-              beforeSend: function (xhr) {
-                ema.model.generateAuthHeader(xhr, true);
-              },
-              success: function (retString) {
-                //save menu json to local storage
-                ema.model.saveToLocalStorage('menustring', JSON.stringify(retString));
-                buildMenu(retString);
-              },
-              error: function (xhr, status, errorThrown) {
-                ema.shell.handleWSError('initMenu', xhr, status, errorThrown, 'e');
-              }
-            });
-          }
+          generateMenu();
         } else {
           //load menu-json from local storage
           buildMenu(eval('(' + decodeURI(ema.model.loadFromLocalStorage('menustring')) + ')'));
@@ -197,9 +152,68 @@ ema.menu = (function () {
     }
   };
   // End PUBLIC method /initModule/
+  // Begin Public method /generateMenu/
+  generateMenu = function () {
+    try {
+      var 
+      requestUrl,
+      request;
+      
+      request = {};
+      request.IMPORT = {};
+      request.IMPORT.I_MENU = ema.shell.getConfigMapConfigValue('I_MENU');
+      request.IMPORT.I_FORCE_UPDATE = 'X';
+      request.IMPORT.I_AUTH_CHECK = 'X';
+      request.IMPORT.I_URLS = 'X';
+      
+      if (ema.shell.getConfigMapConfigValue('MENUISLOCAL') === 'true') {
+        requestUrl = ema.shell.getVersionForFile('menues/' + ema.shell.getStateMapValue('selected_language'), 'json');
+        $.ajax({
+          url: requestUrl,
+          contentType: 'application/json; charset=UTF-8',
+          dataType: 'html',
+          type: 'GET',
+          data: request,
+          success: function (retString) {
+            //save menu json to local storage
+            retString = eval('(' + decodeURI(retString) + ')');
+            ema.model.saveToLocalStorage('menustring', JSON.stringify(retString));
+            buildMenu(retString);
+          },
+          error: function (xhr, status, errorThrown) {
+            ema.shell.handleWSError('generateMenu', xhr, status, errorThrown, 'e');
+          }
+        });
+      } else {
+        requestUrl = ema.model.generateRequestURL('MENU');
+        $.ajax({
+          url: requestUrl,
+          contentType: 'application/json; charset=UTF-8',
+          dataType: ema.shell.getConfigMapConfigValue('AJAX_DATATYPE'),
+          type: ema.shell.getConfigMapConfigValue('AJAX_TYPE'),
+          data: ema.model.generateRequestObj(request),
+          beforeSend: function (xhr) {
+            ema.model.generateAuthHeader(xhr);
+          },
+          success: function (retString) {
+            //save menu json to local storage
+            ema.model.saveToLocalStorage('menustring', JSON.stringify(retString));
+            buildMenu(retString);
+          },
+          error: function (xhr, status, errorThrown) {
+            ema.shell.handleWSError('generateMenu', xhr, status, errorThrown, 'e');
+          }
+        });
+      }
+    } catch (e) {
+      ema.shell.handleError('generateMenu', e, 'e');
+    }
+  };
+  // End PUBLIC method /generateMenu/
 
   return { 
-    initModule : initModule
+    initModule : initModule,
+    generateMenu : generateMenu
   };
   //------------------- END PUBLIC METHODS ---------------------
 }());

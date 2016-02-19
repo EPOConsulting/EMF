@@ -4,8 +4,8 @@ CACHE MANIFEST
 #
 config.properties
 ema.html
-menu.json
-../zemacore/keyvalues.json
+menues/de.json
+menues/en.json
 #
 # module section: js-filenames have to be changed if they are minimized for production
 #
@@ -63,6 +63,11 @@ fonts/digitalfont.ttf
 ../zemacore/ressources/languages/de.json
 ../zemacore/ressources/languages/en.json
 #
+# keyvalues section
+#
+../zemacore/ressources/keyvalues/de.json
+../zemacore/ressources/keyvalues/en.json
+#
 # scripts section: js-filenames have to be changed if they are minimized for production
 #
 ../zemacore/ressources/scripts/chart.min.js
@@ -79,7 +84,7 @@ fonts/digitalfont.ttf
 ../zemacore/ressources/scripts/minutetimer.js
 ../zemacore/ressources/scripts/modernizr.js
 ../zemacore/ressources/scripts/pdfmake.min.js
-../zemacore/ressources/scripts/pdfmake.min.map
+../zemacore/ressources/scripts/pdfmake.min.js.map
 ../zemacore/ressources/scripts/signature_pad.min.js
 ../zemacore/ressources/scripts/sjl.min.js
 ../zemacore/ressources/scripts/vfs_fonts.js
@@ -94,8 +99,10 @@ fonts/digitalfont.ttf
 ../zemaepv/ema.epv.js
 ../zemaepv/whammy.min.js
 ../zemaepv/zemaepv.properties
-../zemaepv/aa/ema.epv.ablauf.js
-../zemaepv/aa/ema.epv.aw_ablauf.js
+../zemaepv/caa/ema.epv.cablauf.js
+../zemaepv/caa/ema.epv.aw_cablauf.js
+../zemaepv/raa/ema.epv.rablauf.js
+../zemaepv/raa/ema.epv.aw_rablauf.js
 ../zemaepv/images/aagruen.png
 ../zemaepv/images/aarot.png
 ../zemaepv/images/Hella.jpg
@@ -105,12 +112,14 @@ fonts/digitalfont.ttf
 ../zemaepv/images/zzarot.png
 ../zemaepv/languages/de.json
 ../zemaepv/languages/en.json
-../zemaepv/pb/ema.epv.aw_prozess.js
-../zemaepv/pb/ema.epv.aw_prozessmat.js
-../zemaepv/pb/ema.epv.prozess.js
+../zemaepv/cpb/ema.epv.aw_cprozess.js
+../zemaepv/cpb/ema.epv.aw_cprozessmat.js
+../zemaepv/cpb/ema.epv.prozess.js
 ../zemaepv/vr/ema.epv.video.js
-../zemaepv/za/ema.epv.aw_zyklus.js
-../zemaepv/za/ema.epv.zyklus.js
+../zemaepv/cza/ema.epv.aw_czyklus.js
+../zemaepv/cza/ema.epv.czyklus.js
+../zemaepv/rza/ema.epv.aw_rzyklus.js
+../zemaepv/rza/ema.epv.rzyklus.js
 ../zemaih/ema.ih.js
 ../zemaih/zemaih.properties
 ../zemaih/Auftraege/ema.ih.aw_iw32.js

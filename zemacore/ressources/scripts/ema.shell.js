@@ -7,7 +7,8 @@ ema.shell = (function () {
   /** Variables ************************************************************************************************************************************************************************************************/
   var
   configMap = {
-      parameter_map : { },
+      parameter_map : {},
+      versions : {},
       keyValues: {},
       logoutminutes : '',
       contentContainer  : undefined      
@@ -25,6 +26,7 @@ ema.shell = (function () {
       languageFileStatus : undefined,
       languageFiles : undefined,
       contentIdList : {},
+      loadedJSFiles : {},
       onloadFunctionList : {},
       onUnloadFunctionList : {},
       onloadFocusField: {},
@@ -36,35 +38,54 @@ ema.shell = (function () {
       hashChangeByClick : false,
       reqSourcePath : '',
       reqNavText : '',
-      syncScreenReload : false
+      syncScreenReload : false,
+      mobileBrowser : false,
+      autosave_navtext : undefined,
+      autosave_path : undefined,
+      autosave_html : undefined,
+      autosave_canvas : undefined,
+      autosave_input : undefined,
+      autosave_checkbox : undefined,
+      autosave_statemap : undefined,
+      autosaveContainer : undefined,
+      autosaveLoadSave : false,
+      autosaveLastSave : undefined
     },
 
   //internal functions
-  generateHTML, loadConfig, checkLoginState, 
-  loadFooter, importModuleJSFile, generateNavigation, 
-  deleteNavigation, loadDashboard, showModule, 
-  onHashchange, loadKeyValueFile, loadSapKeyValue, 
-  callModuleInitFunction, loadModuleConfig, evaluteModuleConfig, 
-  loadModuleScript, loadModuleLanguage, checkModuleLanguageStatus,
+  generateHTML, loadConfig, loadVersions, 
+  loadVersionsSub, checkLoginState, loadFooter, 
+  importModuleJSFile, generateNavigation, deleteNavigation, 
+  loadDashboard, showModule, onHashchange, 
+  loadKeyValueFile, loadSapKeyValue, callModuleInitFunction, 
+  loadModuleConfig, evaluteModuleConfig, loadModuleScript, 
+  loadModuleLanguage, checkModuleLanguageStatus, checkBrowser, 
+  generateContentDiv, readAutosaveCanvas, writeAutosaveCanvas, 
+  writeAutosaveCanvasSub, readAutosaveInput, writeAutosaveInput, 
+  readAutosaveCheckbox, writeAutosaveCheckbox,
 
   //public functions
-  configModule, initModule, handleCustomError,  
-  handleError, handleWSError, hideError, 
-  getLanguagesOptions, setSelectedLanguage, setUserLoggedOn,
-  getStateMapValue, getOnlineStatus, getConfigMapConfigValue, 
-  getConfigMapIndexedDb, getContentContainer, getLogoutminutes, 
-  getKeyValueList, getKeyValue, loadModule, 
-  showHideDashboard, logout, toggleOnline, 
-  setMenuGenerated, addContentDiv, addOnloadFunction, 
-  addOnUnloadFunction, addOnloadFocusField, activateSaveConfirm, 
-  activateLoadingAnimation, changeHash, changeHashSub, loadEmbeddedUri, 
-  historyBack, showHideSection, showSections, 
-  hideSections, loadKeyValues, loadSapKeyValueCallBack, 
-  resetLanguage, setLanguage, getLanguageTextString, 
-  showDialog, resetReqSourcePath, resizeCanvas, 
-  updateSyncScreen, gotoMenu, showLoadingAnimLayer,
-  hideLoadingAnimLayer, showHideBreadcrumb, checkStyleForHeaderAndFooter,
-  showHideHeader, showHideFooter, confirmLogout;
+  configModule, initModule, 
+  handleCustomError, handleError, handleWSError, 
+  hideError, getLanguagesOptions, setSelectedLanguage, 
+  setUserLoggedOn, getStateMapValue, getOnlineStatus, 
+  getConfigMapConfigValue, getConfigMapIndexedDb, getContentContainer, 
+  getLogoutminutes, getKeyValueList, getKeyValue, 
+  loadModule, showHideDashboard, logout, 
+  toggleOnline, setMenuGenerated, addContentDiv, 
+  addOnloadFunction, addOnUnloadFunction, addOnloadFocusField, 
+  activateSaveConfirm, activateLoadingAnimation, changeHash, 
+  changeHashSub, loadEmbeddedUri, historyBack, 
+  showHideSection, showSections, hideSections, 
+  loadKeyValues, loadSapKeyValueCallBack, resetLanguage, 
+  setLanguage, getLanguageTextString, showDialog, 
+  resetReqSourcePath, resizeCanvas, updateSyncScreen, 
+  gotoMenu, showLoadingAnimLayer, hideLoadingAnimLayer, 
+  showHideBreadcrumb, checkStyleForHeaderAndFooter, showHideHeader, 
+  showHideFooter, confirmLogout, getConfigMapExternalHelpValue, 
+  resetContentDivs, processAutosave, registerAutosave, 
+  removeAutosave, checkAutosave, checkAutosaveSub,
+  getVersionForFile;
 
   /** INTERNAL FUNCTIONS**********************************************************************************************************************************************/
   // Begin INTERNAL method /generateHTML/
@@ -109,7 +130,21 @@ ema.shell = (function () {
       '<div class="w100p lblconfirm c">&nbsp;</div>' +
       '<div class="w100p">' +
       '<div class="signaturebutton"><button class="button_nok w100p lblbuttoncancel" onclick="ema.shell.showDialog(\'ema_save_confirm\');"></button></div>' + 
-      '<div class="signaturebutton"><button class="button_ok w100p lblbuttonproceed" onclick="ema.shell.showDialog(\'ema_save_confirm\');ema.shell.changeHashSub();"></button></div>' + 
+      '<div class="signaturebutton"><button class="button_exit w100p lblbuttonexit" onclick="ema.shell.showDialog(\'ema_save_confirm\');ema.shell.changeHashSub();"></button></div>' + 
+      '</div>' +
+      '</div>' +
+      '</div>' + 
+      '</div>' + 
+      //LoadAutosaveConfirm-Layer
+      '<div id="ema_load_autosave_confirm" class="hidden">' +  
+      '<div class="overlayinner">' +
+      '<div class="hcontent overlaycontent w50p">' +
+      '<div class="w80p overlayhead">&nbsp;</div>' +
+      '<div class="w20p overlayhead r"><a onclick="ema.shell.removeAutosave(true);" class="tbg"><i class="icon-cancel"></i></a></div>' +
+      '<div class="w100p lblautosave c">&nbsp;</div>' +
+      '<div class="w100p">' +
+      '<div class="signaturebutton"><button class="button_nok w100p lblbuttoncancel" onclick="ema.shell.removeAutosave(true);"></button></div>' +
+      '<div class="signaturebutton"><button class="button_ok w100p lblbuttonproceed" onclick="ema.shell.showDialog(\'ema_load_autosave_confirm\');ema.shell.changeHashSub();"></button></div>' + 
       '</div>' +
       '</div>' +
       '</div>' + 
@@ -123,8 +158,18 @@ ema.shell = (function () {
       '<div class="w100p lbllogoutconfirm c">&nbsp;</div>' +
       '<div class="w100p">' +
       '<div class="signaturebutton"><button class="button_nok w100p lblbuttoncancel" onclick="ema.shell.showDialog(\'ema_logout_confirm\');"></button></div>' + 
-      '<div class="signaturebutton"><button class="button_ok w100p lblbuttonproceed" onclick="ema.shell.showDialog(\'ema_logout_confirm\');ema.shell.logout();"></button></div>' + 
+      '<div class="signaturebutton"><button class="button_exit w100p lblbuttonexit" onclick="ema.shell.showDialog(\'ema_logout_confirm\');ema.shell.logout();"></button></div>' + 
       '</div>' +
+      '</div>' +
+      '</div>' + 
+      '</div>' + 
+      //ExternalHelp-Layer
+      '<div id="ema_external_help" class="hidden">' +  
+      '<div class="overlayinner">' +
+      '<div class="hcontent overlaycontent w50p">' +
+      '<div class="w80p overlayhead">&nbsp;</div>' +
+      '<div class="w20p overlayhead r"><a onclick="ema.formgenerator.openHelpInNewWindow()" class="tbg"><i class="icon-level-up"></i></a>&nbsp;<a onclick="ema.shell.showDialog(\'ema_external_help\')" class="tbg"><i class="icon-cancel"></i></a></div>' +
+      '<div class="w100p c"><iframe src="about:blank" id="ema_external_help_frame"></iframe></div>' +
       '</div>' +
       '</div>' + 
       '</div>' + 
@@ -150,7 +195,7 @@ ema.shell = (function () {
   loadConfig = function () {
     try {
       $.ajax({
-        url: 'config.properties',
+        url: getVersionForFile('config', 'properties'),
         type: 'GET',
         contentType: 'utf-8',
         dataType: 'json',
@@ -201,6 +246,7 @@ ema.shell = (function () {
               }
               stateMap.languageFiles[lang] = {};
               for (i = 0; i < configMap.parameter_map.MODULES.LANGUAGES.length; i += 1) {
+                stateMap.languageFileStatus[configMap.parameter_map.MODULES.LANGUAGES[i] + '_' + lang] = 'pending';
                 loadModuleLanguage(configMap.parameter_map.MODULES.LANGUAGES[i], lang);
               }
             }
@@ -228,11 +274,51 @@ ema.shell = (function () {
     }
   };
   // End INTERNAL method /loadConfig/
+  // Begin INTERNAL method /loadVersions/
+  /*
+   * loads the versions file and saves it to configMap.versions
+   */
+  loadVersions = function () {
+    try {
+      loadVersionsSub('versions.json');
+      if (configMap.versions.versionpath !== undefined && configMap.versions.versionpath !== '') {
+        loadVersionsSub(configMap.versions.versionpath);
+      }
+    } catch (e) {
+      handleError('loadVersions', e, 'e');
+    }
+  };
+  // End INTERNAL method /loadVersions/
+  // Begin INTERNAL method /loadVersionsSub/
+  /*
+   * loads the versions file and saves it to configMap.versions
+   */
+  loadVersionsSub = function (versionPath) {
+    try {
+      $.ajax({
+        url: versionPath,
+        type: 'GET',
+        cache: false,
+        contentType: 'utf-8',
+        dataType: 'json',
+        async: false,
+        success: function (retString) {
+          configMap.versions = retString;
+        },
+        error: function (xhr, status, errorThrown) {
+          handleWSError('loadVersionsSub', xhr, status, errorThrown, 'e');
+        }
+      });
+    } catch (e) {
+      handleError('loadVersionsSub', e, 'e');
+    }
+  };
+  // End INTERNAL method /loadVersionsSub/
   // Begin INTERNAL method /loadKeyValueFile/
   loadKeyValueFile = function (keyValueConfig) {
     try {
       $.ajax({
-        url: keyValueConfig.LOCATION,
+        url: getVersionForFile(keyValueConfig.LOCATION + stateMap.selected_language, 'json'),
         type: 'GET',
         contentType: 'utf-8',
         dataType: 'json',
@@ -304,16 +390,17 @@ ema.shell = (function () {
           return true;  //no login required
         } else {
           //check if there is a valid login in local storage for the current user
-          if (logoutTime - aktTime.getTime() > 0 && ema.model.loadFromLocalStorage('curr_username') !== '') {
+          //if (logoutTime - aktTime.getTime() > 0 && ema.model.loadFromLocalStorage('curr_username') !== '') {
+          if (logoutTime - aktTime.getTime() > 0 && ema.model.loadFromLocalStorage('curr_username') !== '--logged-out--') {
             //start logouttimer
             ema.model.startTimerTask();
             stateMap.isUserLoggedOn = true;
             //load language
             stateMap.selected_language = ema.model.loadFromLocalStorage('sel_language');
-            ema.model.loadLanguagePattern(stateMap.selected_language);
+            ema.model.loadLanguagePattern(stateMap.selected_language, false);
             return true;    //no login required
           } else {
-            ema.model.saveToLocalStorage('curr_username', '');
+            ema.model.saveToLocalStorage('curr_username', '--logged-out--');
             ema.model.saveToLocalStorage('curr_password', '');
             return false; //login required
           }
@@ -363,6 +450,11 @@ ema.shell = (function () {
         //delete saved listdata
         ema.listgenerator.deleteListData();
         
+        //reset AutosaveData
+        if (stateMap.isUserLoggedOn === true) {
+          removeAutosave(false);
+        }
+        
         //start loadinganimation
         if (stateMap.loadingAnimationList[sourcePath] !== undefined) {
           $('#' + stateMap.contentIdList[sourcePath]).html(ema.formgenerator.getLoadingAnimation('large', false));
@@ -376,7 +468,7 @@ ema.shell = (function () {
           $('#' + stateMap.onloadFocusField[sourcePath]).focus();
         }
   
-        ema.model.loadLanguagePattern(stateMap.selected_language);
+        ema.model.loadLanguagePattern(stateMap.selected_language, false);
         getOnlineStatus();
       }
     } catch (e) {
@@ -391,34 +483,17 @@ ema.shell = (function () {
   importModuleJSFile = function (path, navText) {
     try {
       if (getConfigMapConfigValue('DEVELOPMENTMODE') === 'false') {
-        $.getScript(path + '.js#')
+        $.getScript(getVersionForFile(path, 'js') + '#')
         .done(function (script, textStatus) {
-          var neuesDiv, pathSplit;
-          //generate a contentdiv for the module
-          stateMap.contentIdMax += 1;
-          stateMap.contentIdList[path] = 'contentDiv' + stateMap.contentIdMax;
-          neuesDiv = $('<div class="w100p contentDiv" id="contentDiv' + stateMap.contentIdMax + '\"></div>');
-          neuesDiv.appendTo('#' + configMap.contentContainer);
-          //execute modules init function
-          pathSplit = path.split('/');
-          callModuleInitFunction(pathSplit[pathSplit.length - 1], path, 'contentDiv' + stateMap.contentIdMax, navText);
+          generateContentDiv(path, navText);
         })
         .fail(function (jqxhr, settings, exception) {
           handleCustomError('importModuleJSFile', exception, 'e');
         });
       } else {
-        sjl.load([path + '.js#'], function () {
+        sjl.load([getVersionForFile(path, 'js') + '#'], function () {
           $('document').ready(function () {
-            var neuesDiv, pathSplit;
-            
-            //generate contentdiv for the module
-            stateMap.contentIdMax += 1;
-            stateMap.contentIdList[path] = 'contentDiv' + stateMap.contentIdMax;
-            neuesDiv = $('<div class="w100p contentDiv" id="contentDiv' + stateMap.contentIdMax + '\"></div>');
-            neuesDiv.appendTo('#' + configMap.contentContainer);
-            //execute modules init function
-            pathSplit = path.split('/');
-            callModuleInitFunction(pathSplit[pathSplit.length - 1], path, 'contentDiv' + stateMap.contentIdMax, navText);
+            generateContentDiv(path, navText);
           });
         });
       }
@@ -514,6 +589,7 @@ ema.shell = (function () {
       htmlUser = '',
       htmlOnline = '',
       htmlSync = '',
+      htmlAutosave = '',
       htmlShowHide = '',
       htmlSetup = '';
 
@@ -553,6 +629,19 @@ ema.shell = (function () {
           htmlSync += '<div class="w100p"><span class="lbldosync"></span></div>';
         }
         htmlSync += '</div>';
+        //5. Section Autosave
+        htmlAutosave = '<div class="dbentry dbr">';
+        if (stateMap.autosave_path !== undefined && stateMap.autosave_path !== '') {
+          htmlAutosave += '<div class="w100p lblautosaveactive green"></div>';
+        } else {
+          htmlAutosave += '<div class="w100p lblautosaveinactive red"></div>';
+        }
+        if (stateMap.autosaveLastSave > 0) {
+          htmlAutosave += '<div id="autosaveLastSave" class="w100p ">' + ema.shell.getLanguageTextString('allgemein', 'lbllastautosave') + ': ' + ema.model.formatDateTimeForDisplay(stateMap.autosaveLastSave) + '</div>';
+        } else {
+          htmlAutosave += '<div id="autosaveLastSave" class="w100p ">' + ema.shell.getLanguageTextString('allgemein', 'lbllastautosave') + ': ---</div>';
+        }
+        htmlAutosave += '</div>';
       } else {
         //3. Section System
         htmlSystem = '<div class="dbentry dbr">';
@@ -561,14 +650,14 @@ ema.shell = (function () {
         htmlSystem += '</div>';
       }
       
-      //5. Section Setup
+      //6. Section Setup
       htmlSetup = '<div class="dbentry dbr">';
       htmlSetup += '<div class="w100p"><a onclick="ema.shell.changeHash(ema.shell.getConfigMapConfigValue(\'COREPATH\') + \'modules/ema.setup\', undefined)" class="lblsetup"></a></div>';
       htmlSetup += '</div>';
       
-      $('#dashbord').html(htmldb + htmlOnline + htmlUser + htmlSystem + htmlSync + htmlSetup + '</div>' + htmlShowHide);
+      $('#dashbord').html(htmldb + htmlOnline + htmlUser + htmlSystem + htmlSync + htmlAutosave + htmlSetup + '</div>' + htmlShowHide);
       if (reloadLanguagePattern === true) {
-        ema.model.loadLanguagePattern(stateMap.selected_language);
+        ema.model.loadLanguagePattern(stateMap.selected_language, false);
       }
       if (stateMap.isUserLoggedOn === true) {
         //to avoid a loop
@@ -596,8 +685,19 @@ ema.shell = (function () {
         moduleObj = moduleObj[pathSplit[i]];
       }
       if (moduleObj !== undefined) {
-        moduleObj.initModule(path, contentDiv);
-        showModule(path, navText);
+        //Load Autosave ...
+        if (stateMap.autosaveLoadSave === true && stateMap.isUserLoggedOn === true) {
+          $('#' + contentDiv).html(stateMap.autosave_html);
+          writeAutosaveCanvas(contentDiv);
+          writeAutosaveInput(contentDiv);
+          writeAutosaveCheckbox(contentDiv);
+          stateMap.autosaveLoadSave = false;
+          moduleObj.initModule(path, contentDiv, stateMap.autosave_statemap);
+          showModule(path, navText);
+        } else {
+          moduleObj.initModule(path, contentDiv);
+          showModule(path, navText);
+        }
       }
     } catch (e) {
       handleError('callModuleInitFunction', e, 'e');
@@ -608,7 +708,7 @@ ema.shell = (function () {
   loadModuleConfig = function (fileName) {
     try {
       $.ajax({
-        url: fileName,
+        url: getVersionForFile(fileName, 'properties'),
         type: 'GET',
         contentType: 'utf-8',
         dataType: 'json',
@@ -617,7 +717,7 @@ ema.shell = (function () {
           evaluteModuleConfig(retObj, configMap.parameter_map);
         },
         error: function (xhr, status, errorThrown) {
-          handleWSError('loadConfig', xhr, status, errorThrown, 'e');
+          handleWSError('loadModuleConfig', xhr, status, errorThrown, 'e');
         }
       });
     } catch (e) {
@@ -660,13 +760,13 @@ ema.shell = (function () {
   loadModuleScript = function (fileName) {
     try {
       if (ema.shell.getConfigMapConfigValue('DEVELOPMENTMODE') === 'false') {
-        $.getScript(fileName)
+        $.getScript(getVersionForFile(fileName, 'js') + '#')
         .done(function (script, textStatus) {})
         .fail(function (jqxhr, settings, exception) {
           ema.shell.handleCustomError('loadModuleScript', exception, 'e');
         });
       } else {
-        sjl.load([fileName], function () {});
+        sjl.load([getVersionForFile(fileName, 'js') + '#'], function () {});
       }
     } catch (e) {
       handleError('loadModuleScript', e, 'e');
@@ -676,13 +776,12 @@ ema.shell = (function () {
   // Begin INTERNAL method /loadModuleLanguage/
   loadModuleLanguage = function (fileName, language) {
     try {
-      stateMap.languageFileStatus[fileName + '_' + language] = 'pending';
       $.ajax({
-        url: fileName + '/' + language + '.json',
+        url: getVersionForFile(fileName + '/' + language, 'json'),
         type: 'GET',
         contentType: 'utf-8',
         dataType: 'json',
-        async: false,
+        async: true,
         success: function (retObj) {
           stateMap.languageFileStatus[fileName + '_' + language] = 'ok';
           evaluteModuleConfig(retObj, stateMap.languageFiles[language]);
@@ -691,7 +790,7 @@ ema.shell = (function () {
         error: function (xhr, status, errorThrown) {
           stateMap.languageFileStatus[fileName + '_' + language] = 'nok';
           checkModuleLanguageStatus();
-          handleWSError('loadConfig', xhr, status, errorThrown, 'e');
+          handleWSError('loadModuleLanguage', xhr, status, errorThrown, 'e');
         }
       });
     } catch (e) {
@@ -718,6 +817,9 @@ ema.shell = (function () {
         for (entry in stateMap.languageFiles) {
           if (stateMap.languageFiles.hasOwnProperty(entry)) {
             ema.model.saveToLocalStorage('languageString_' + entry, JSON.stringify(stateMap.languageFiles[entry]));
+            if (entry === stateMap.selected_language) {
+              stateMap.languageJson = stateMap.languageFiles[entry];
+            }
           }
         }
       }
@@ -726,6 +828,191 @@ ema.shell = (function () {
     }
   };
   // End INTERNAL method /checkModuleLanguageStatus/
+  // Begin INTERNAL method /checkBrowser/
+  checkBrowser = function () {
+    try {
+      var 
+      navStr,
+      regExp1,
+      regExp2;
+      
+      navStr = navigator.userAgent || navigator.vendor || window.opera;
+      regExp1 = new RegExp(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i);
+      regExp2 = new RegExp(/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i);
+      
+      if (regExp1.test(navStr) || regExp2.test(navStr.substr(0, 4))) {
+        stateMap.mobileBrowser = true;
+      }
+    } catch (e) {
+      handleError('checkBrowser', e, 'e');
+    }
+  };
+  // End INTERNAL method /checkBrowser/
+  // Begin INTERNAL method /generateContentDiv/
+  generateContentDiv = function (path, navText) {
+    try {
+      var neuesDiv, pathSplit;
+      //generate a contentdiv for the module
+      stateMap.contentIdMax += 1;
+      stateMap.contentIdList[path] = 'contentDiv' + stateMap.contentIdMax;
+      stateMap.loadedJSFiles[path] = path;
+      neuesDiv = $('<div class="w100p contentDiv" id="contentDiv' + stateMap.contentIdMax + '\"></div>');
+      neuesDiv.appendTo('#' + configMap.contentContainer);
+      //execute modules init function
+      pathSplit = path.split('/');
+      callModuleInitFunction(pathSplit[pathSplit.length - 1], path, 'contentDiv' + stateMap.contentIdMax, navText);
+    } catch (e) {
+      handleError('generateContentDiv', e, 'e');
+    }
+  };
+  // End INTERNAL method /generateContentDiv/
+  // Begin INTERNAL method /readAutosaveCanvas/
+  readAutosaveCanvas = function (container) {
+    try {
+      var
+      jCanvasList,
+      canvasList,
+      canvasItem,
+      i;
+      
+      canvasList = [];
+      jCanvasList = $('#' + container).find('canvas');
+      
+      for (i = 0; i < jCanvasList.length; i += 1) {
+        canvasItem = {};
+        canvasItem.id = jCanvasList[i].id;
+        canvasItem.data = jCanvasList[i].toDataURL("image/png");
+        
+        canvasList.push(canvasItem);
+      }
+      
+      return JSON.stringify(canvasList);
+    } catch (e) {
+      handleError('readAutosaveCanvas', e, 'e');
+    }
+  };
+  // End INTERNAL method /readAutosaveCanvas/
+  // Begin INTERNAL method /writeAutosaveCanvas/
+  writeAutosaveCanvas = function (container) {
+    try {
+      var
+      canvasList,
+      i;
+      
+      canvasList = JSON.parse(stateMap.autosave_canvas);
+      
+      for (i = 0; i < canvasList.length; i += 1) {
+        writeAutosaveCanvasSub(canvasList[i].id, canvasList[i].data);
+      }
+      
+    } catch (e) {
+      handleError('writeAutosaveCanvas', e, 'e');
+    }
+  };
+  // End INTERNAL method /writeAutosaveCanvas/
+  // Begin INTERNAL method /writeAutosaveCanvasSub/
+  writeAutosaveCanvasSub = function (canvasId, canvasSource) {
+    try {
+      var tmpImage;
+      
+      tmpImage = new Image();
+      tmpImage.src = canvasSource;
+      tmpImage.onload = function () {
+        $('#' + canvasId)[0].drawImage(tmpImage, 0, 0, 640, 480);
+      };
+    } catch (e) {
+      handleError('writeAutosaveCanvasSub', e, 'e');
+    }
+  };
+  // End INTERNAL method /writeAutosaveCanvasSub/
+  // Begin INTERNAL method /readAutosaveInput/
+  readAutosaveInput = function (container) {
+    try {
+      var
+      jInputList,
+      inputList,
+      inputItem,
+      i;
+      
+      inputList = [];
+      jInputList = $('#' + container).find('input, textarea');
+      
+      for (i = 0; i < jInputList.length; i += 1) {
+        inputItem = {};
+        inputItem.id = jInputList[i].id;
+        inputItem.data = $('#' + jInputList[i].id).val();
+        
+        inputList.push(inputItem);
+      }
+      
+      return JSON.stringify(inputList);
+    } catch (e) {
+      handleError('readAutosaveInput', e, 'e');
+    }
+  };
+  // End INTERNAL method /readAutosaveInput/
+  // Begin INTERNAL method /writeAutosaveInput/
+  writeAutosaveInput = function (container) {
+    try {
+      var
+      inputList,
+      i;
+      
+      inputList = JSON.parse(stateMap.autosave_input);
+      
+      for (i = 0; i < inputList.length; i += 1) {
+        $('#' + inputList[i].id).val(inputList[i].data);
+      }
+      
+    } catch (e) {
+      handleError('writeAutosaveInput', e, 'e');
+    }
+  };
+  // End INTERNAL method /writeAutosaveInput/
+  // Begin INTERNAL method /readAutosaveCheckbox/
+  readAutosaveCheckbox = function (container) {
+    try {
+      var
+      jInputList,
+      inputList,
+      inputItem,
+      i;
+      
+      inputList = [];
+      jInputList = $('#' + container).find('input:checkbox');
+      
+      for (i = 0; i < jInputList.length; i += 1) {
+        inputItem = {};
+        inputItem.id = jInputList[i].id;
+        inputItem.data = $('#' + jInputList[i].id)[0].checked;
+        
+        inputList.push(inputItem);
+      }
+      
+      return JSON.stringify(inputList);
+    } catch (e) {
+      handleError('readAutosaveCheckbox', e, 'e');
+    }
+  };
+  // End INTERNAL method /readAutosaveCheckbox/
+  // Begin INTERNAL method /writeAutosaveCheckbox/
+  writeAutosaveCheckbox = function (container) {
+    try {
+      var
+      inputList,
+      i;
+      
+      inputList = JSON.parse(stateMap.autosave_checkbox);
+      
+      for (i = 0; i < inputList.length; i += 1) {
+        $('#' + inputList[i].id)[0].checked = inputList[i].data;
+      }
+      
+    } catch (e) {
+      handleError('writeAutosaveCheckbox', e, 'e');
+    }
+  };
+  // End INTERNAL method /writeAutosaveCheckbox/
   // Begin Event handler /onHashchange/
   onHashchange = function (event) {
     try {
@@ -796,7 +1083,7 @@ ema.shell = (function () {
     if (xhr.responseText !== undefined && errorThrown.message.toLowerCase() !== 'bad request' && xhr.responseText.indexOf("400") > -1) {
       errorString += '<div class="error_' + errorLevel.toLowerCase() + '">';
       errorString += '<div class="w100p c">' + errorThrown + '</div>';
-      errorString += '<div>Rückmeldung vom Server: ' + xhr.responseText + '</div>';
+      errorString += '<div>RÃ¼ckmeldung vom Server: ' + xhr.responseText + '</div>';
       errorString += '</div>';
       if (getConfigMapConfigValue('DEVELOPMENTMODE') === 'true') {
         errorString += '<div class="w100p c">Meldung aus Funktion ' + functionName + '</div>';
@@ -824,7 +1111,11 @@ ema.shell = (function () {
   configModule = function () {
     try {
       var i;
+      loadVersions();
       loadConfig();
+      if (configMap.versions.version !== configMap.parameter_map.CONFIG.VERSION) {
+        document.location.reload(true);
+      }
       return true;
     } catch (e) {
       handleError('configModule', e, 'e');
@@ -850,6 +1141,13 @@ ema.shell = (function () {
         cache: true
       });
       
+      checkBrowser();
+      stateMap.isUserOnline = ema.model.loadFromLocalStorage('isUserOnline');
+      if (stateMap.isUserOnline === '' || stateMap.isUserOnline === '1') {
+        stateMap.isUserOnline = true;
+      } else {
+        stateMap.isUserOnline = false;
+      }
       checkStyleForHeaderAndFooter();
       
       //get URI Parameters:
@@ -864,6 +1162,8 @@ ema.shell = (function () {
       sourcePath = ema.model.getUriParameter(document.location.href, 'sourcePath');
       navText = ema.model.getUriParameter(document.location.href, 'navText');
       
+      stateMap.autosaveLoadSave = true;
+      
       if (checkLoginState() === false) {
         //save the original target
         if (sourcePath !== null && sourcePath !== ema.shell.getConfigMapConfigValue('COREPATH') + 'modules/ema.login') {
@@ -877,12 +1177,14 @@ ema.shell = (function () {
         if (sourcePath !== null && sourcePath !== ema.shell.getConfigMapConfigValue('COREPATH') + 'modules/ema.login') {
           stateMap.reqSourcePath = sourcePath;
           stateMap.reqNavText = navText;
-          changeHash(sourcePath, navText);
+          //changeHash(sourcePath, navText);
+          //set up database
+          ema.datamanager.initDatabase(sourcePath, navText);
         } else {
-          changeHash(ema.shell.getConfigMapConfigValue('COREPATH') + 'modules/ema.menu', 'Home');
+          //changeHash(ema.shell.getConfigMapConfigValue('COREPATH') + 'modules/ema.menu', 'Home');
+          //set up database
+          ema.datamanager.initDatabase(ema.shell.getConfigMapConfigValue('COREPATH') + 'modules/ema.menu', 'Home');
         }
-        //set up database
-        ema.datamanager.initDatabase();
       }
       loadFooter();
     } catch (e) {
@@ -1093,17 +1395,22 @@ ema.shell = (function () {
   // End PUBLIC method /setMenuGenerated/
   // Begin PUBLIC method /loadModule/
   /*
-   * Diese Funktion lädt ein bestimmtes Modul in den Contentbereich
-   * sourcePath   String - wo findet sich der htmlcode für das Module 
+   * Diese Funktion lÃ¤dt ein bestimmtes Modul in den Contentbereich
+   * sourcePath   String - wo findet sich der htmlcode fÃ¼r das Module 
    */
   loadModule = function (sourcePath, navText) {
     try {
       ema.model.setLogoutTime();
+      ema.model.setAutosaveNextSave();
       //reset Footer
       $('#footerbutton').html('&nbsp;');
       if (stateMap.contentIdList[sourcePath] === undefined) {
-        //JS File nachladen
-        importModuleJSFile(sourcePath, navText);
+        if (stateMap.loadedJSFiles[sourcePath] !== undefined) {
+          generateContentDiv(sourcePath, navText);
+        } else {
+          //JS File nachladen
+          importModuleJSFile(sourcePath, navText);
+        }
       } else {
         showModule(sourcePath, navText);
       }
@@ -1138,8 +1445,9 @@ ema.shell = (function () {
       divChange.navText = navText;
       divChange.aktDiv = aktDiv;
       stateMap.divChange = divChange;
-      
-      if (callConfirmLayer === true) {
+      if (stateMap.autosaveLoadSave === true && stateMap.isUserLoggedOn === true) {
+        showDialog('ema_load_autosave_confirm');
+      } else if (callConfirmLayer === true) {
         showDialog('ema_save_confirm');
       } else {
         changeHashSub();
@@ -1216,7 +1524,7 @@ ema.shell = (function () {
       currSourcePath = ema.model.getUriParameter(document.location.href, 'sourcePath');
       currNavText = ema.model.getUriParameter(document.location.href, 'navText');
       
-      //Div für das neue Modul erstellen
+      //Div fÃ¼r das neue Modul erstellen
       stateMap.contentIdMax += 1;
       stateMap.contentIdList[sourcePath] = 'contentDiv' + stateMap.contentIdMax;
       neuesDiv = $('<div class="w100p contentDiv" id="contentDiv' + stateMap.contentIdMax + '\"><iframe src="' + sourcePath + '"></iframe></div>');
@@ -1275,15 +1583,32 @@ ema.shell = (function () {
   // Begin PUBLIC method /logout/
   logout = function () {
     try {
+      var 
+      i,
+      cookies,
+      cookie,
+      eqPos,
+      name;
+      
       ema.model.terminateTimerTask();
-      ema.model.saveToLocalStorage('curr_username', '');
+      ema.model.saveToLocalStorage('curr_username', '--logged-out--');
       ema.model.saveToLocalStorage('curr_password', '');
       ema.model.saveToLocalStorage('curr_username_abbr', '');
       ema.model.saveToLocalStorage('LogoutTime', '0');
+      ema.model.saveToLocalStorage('AutosaveNextSave', '0');
       stateMap.isUserLoggedOn = false;
       ema.datamanager.startSynchronisation('up');
       $('#password').val('');
       document.location.href = ema.model.getUri(document.location.href);
+
+      cookies = document.cookie.split(";");
+
+      for (i = 0; i < cookies.length; i += 1) {
+        cookie = cookies[i];
+        eqPos = cookie.indexOf("=");
+        name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+        document.cookie = name + "=; Path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
     } catch (e) {
       handleError('logout', e, 'e');
     }
@@ -1297,15 +1622,17 @@ ema.shell = (function () {
     try {
       if (stateMap.isUserOnline === true) {
         stateMap.isUserOnline = false;
+        ema.model.saveToLocalStorage('isUserOnline', 0);
       } else {
         stateMap.isUserOnline = true;
+        ema.model.saveToLocalStorage('isUserOnline', 1);
         //user want to switch to online - if there is no connection the apps stays offline
         if (stateMap.isAppOnline === false) {
           handleCustomError('toggleOnline', 'errtoggleonline', 'i');
         }
       }
       loadDashboard();
-      ema.model.loadLanguagePattern(stateMap.selected_language);
+      ema.model.loadLanguagePattern(stateMap.selected_language, false);
     } catch (e) {
       handleError('toggleOnline', e, 'e');
     }
@@ -1611,7 +1938,191 @@ ema.shell = (function () {
     }
   };
   // End PUBLIC method /confirmLogout/
+  // Begin PUBLIC method /getConfigMapExternalHelpValue/
+  getConfigMapExternalHelpValue = function (paramName) {
+    try {
+      return configMap.parameter_map.EXTERNALHELP[paramName];
+    } catch (e) {
+      handleError('getConfigMapExternalHelpValue', e, 'e');
+    }
+  };
+  // End PUBLIC method /getConfigMapExternalHelpValue/
+  // Begin PUBLIC method /resetContentDivs/
+  resetContentDivs = function () {
+    try {
+      var entry;
+      
+      for (entry in stateMap.contentIdList) {
+        if (stateMap.contentIdList.hasOwnProperty(entry)) {
+          if (entry.indexOf("ema.login") === -1 && entry.indexOf("ema.sync") === -1 && entry.indexOf("ema.menu") === -1 && entry.indexOf("ema.setup") === -1) {
+            $('#' + stateMap.contentIdList[entry]).remove();
+            delete stateMap.contentIdList[entry];
+          }
+        }
+      }
+    } catch (e) {
+      handleError('resetContentDivs', e, 'e');
+    }
+  };
+  // End PUBLIC method /resetContentDivs/
+  // Begin PUBLIC method /processAutosave/
+  processAutosave = function (forceSave) {
+    try {
+      var 
+      dataList,
+      autosaveNextSave,
+      aktTime;
+      
+      autosaveNextSave = ema.model.loadFromLocalStorage("AutosaveNextSave");
+      aktTime = new Date();
 
+      if ((autosaveNextSave - aktTime.getTime() <= 0) || forceSave === true) {
+        dataList = [];
+        if (stateMap.autosave_path !== undefined && stateMap.autosave_path !== '' && stateMap.autosaveLoadSave !== true) {
+          dataList.push({ key: 'autosave_navtext', data: stateMap.autosave_navtext });
+          dataList.push({ key: 'autosave_path', data: stateMap.autosave_path });
+          dataList.push({ key: 'autosave_html', data: $('#' + stateMap.autosaveContainer).html() });
+          dataList.push({ key: 'autosave_canvas', data: readAutosaveCanvas(stateMap.autosaveContainer) });
+          dataList.push({ key: 'autosave_input', data: readAutosaveInput(stateMap.autosaveContainer) });
+          dataList.push({ key: 'autosave_checkbox', data: readAutosaveCheckbox(stateMap.autosaveContainer) });
+          dataList.push({ key: 'autosave_statemap', data: JSON.stringify(stateMap.autosave_statemap) });
+  
+          ema.datamanager.writeAutosaveDataToDatabase(dataList);
+          stateMap.autosaveLastSave = new Date();
+          ema.model.setAutosaveNextSave();
+        }
+      }
+    } catch (e) {
+      handleError('processAutosave', e, 'e');
+    }
+  };
+  // End PUBLIC method /processAutosave/
+  // Begin PUBLIC method /registerAutosave/
+  registerAutosave = function (navText, path, container, formStateMap) {
+    try {
+      stateMap.autosave_navtext = navText;
+      stateMap.autosave_path = path;
+      stateMap.autosaveContainer = container;
+      stateMap.autosave_statemap = formStateMap;
+    } catch (e) {
+      handleError('registerAutosave', e, 'e');
+    }
+  };
+  // End PUBLIC method /registerAutosave/
+  // Begin PUBLIC method /removeAutosave/
+  removeAutosave = function (callNextPage) {
+    try {
+      stateMap.autosave_navtext = undefined;
+      stateMap.autosave_path = undefined;
+      stateMap.autosave_html = undefined;
+      stateMap.autosave_canvas = undefined;
+      stateMap.autosave_input = undefined;
+      stateMap.autosave_checkbox = undefined;
+      stateMap.autosave_statemap = undefined;
+      stateMap.autosaveLoadSave = false;
+      
+      ema.datamanager.deleteEntryFromObjectStore('AUTOSAVESTORE', 'autosave_navtext');
+      ema.datamanager.deleteEntryFromObjectStore('AUTOSAVESTORE', 'autosave_path');
+      ema.datamanager.deleteEntryFromObjectStore('AUTOSAVESTORE', 'autosave_html');
+      ema.datamanager.deleteEntryFromObjectStore('AUTOSAVESTORE', 'autosave_canvas');
+      ema.datamanager.deleteEntryFromObjectStore('AUTOSAVESTORE', 'autosave_input');
+      ema.datamanager.deleteEntryFromObjectStore('AUTOSAVESTORE', 'autosave_checkbox');
+      ema.datamanager.deleteEntryFromObjectStore('AUTOSAVESTORE', 'autosave_statemap');
+      
+      if (callNextPage) {
+        //hide confirm layer
+        showDialog('ema_load_autosave_confirm');
+        window.setTimeout(ema.shell.changeHash(ema.shell.getConfigMapConfigValue('COREPATH') + 'modules/ema.menu', 'Home'), 0);
+      }
+    } catch (e) {
+      handleError('removeAutosave', e, 'e');
+    }
+  };
+  // End PUBLIC method /removeAutosave/
+  // Begin PUBLIC method /checkAutosave/
+  checkAutosave = function (sourcePath, navText) {
+    try {
+      var autosaveKeys;
+      
+      if (stateMap.autosaveLoadSave === true) {
+        autosaveKeys = {};
+        autosaveKeys.autosave_navtext = 'autosave_navtext';
+        autosaveKeys.autosave_path = 'autosave_path';
+        autosaveKeys.autosave_html = 'autosave_html';
+        autosaveKeys.autosave_canvas = 'autosave_canvas';
+        autosaveKeys.autosave_input = 'autosave_input';
+        autosaveKeys.autosave_checkbox = 'autosave_checkbox';
+        autosaveKeys.autosave_statemap = 'autosave_statemap';
+        ema.datamanager.readOfflineData('AUTOSAVESTORE', autosaveKeys, ema.shell.checkAutosaveSub, true);
+      } else {
+        ema.shell.changeHash(sourcePath, navText);
+      }
+    } catch (e) {
+      handleError('checkAutosave', e, 'e');
+    }
+  };
+  // End PUBLIC method /checkAutosave/
+  // Begin PUBLIC method /checkAutosaveSub/
+  checkAutosaveSub = function (reqData) {
+    try {
+      var i;
+      
+      if (reqData.length === 0) {
+        //load menu
+        stateMap.autosaveLoadSave = false;
+        changeHash(ema.shell.getConfigMapConfigValue('COREPATH') + 'modules/ema.menu', 'Home');
+      } else {
+        for (i = 0; i < reqData.length; i += 1) {
+          if (reqData[i].key !== undefined) {
+            if (reqData[i].key === 'autosave_statemap') {
+              stateMap[reqData[i].key] = JSON.parse(reqData[i].data);
+            } else {
+              stateMap[reqData[i].key] = reqData[i].data;
+            }
+          }
+        }
+        stateMap.autosaveLoadSave = true;
+        changeHash(stateMap.autosave_path, stateMap.autosave_navtext);
+      }
+    } catch (e) {
+      handleError('checkAutosaveSub', e, 'e');
+    }
+  };
+  // End PUBLIC method /checkAutosaveSub/
+  // Begin PUBLIC method /getVersionForFile/
+  getVersionForFile = function (fileName, fileType) {
+    try {
+      var 
+      retFileName,
+      entry;
+      
+      retFileName = '';
+      //1. check if there is a versionnumber for this specific file
+      if (configMap.versions.hasOwnProperty(fileType) && configMap.versions[fileType].hasOwnProperty(fileName)) {
+        if (configMap.versions[fileType][fileName] !== '') {
+          retFileName = fileName + '_' + configMap.versions[fileType][fileName] + '.' + fileType;
+        }
+      } else {
+        //2. check if there is a verionsnumber for the module
+        for (entry in configMap.versions.modules) {
+          if (configMap.versions.modules.hasOwnProperty(entry)) {
+            if (fileName.indexOf('/' + entry + '/') > -1) {
+              retFileName = fileName + '_' + configMap.versions.modules[entry] + '.' + fileType;
+            }
+          }
+        }
+      }
+      
+      if (retFileName === '') {
+        retFileName = fileName + '.' + fileType;
+      }
+      
+      return retFileName;
+    } catch (e) {
+      handleError('getVersionForFile', e, 'e');
+    }
+  };
+  // End PUBLIC method /getVersionForFile/
   $(window)
   .bind('hashchange', onHashchange);
   
@@ -1669,7 +2180,15 @@ ema.shell = (function () {
     checkStyleForHeaderAndFooter : checkStyleForHeaderAndFooter,
     showHideHeader : showHideHeader,
     showHideFooter : showHideFooter,
-    confirmLogout : confirmLogout
+    confirmLogout : confirmLogout,
+    getConfigMapExternalHelpValue : getConfigMapExternalHelpValue,
+    resetContentDivs : resetContentDivs,
+    processAutosave : processAutosave,
+    registerAutosave : registerAutosave,
+    removeAutosave : removeAutosave,
+    checkAutosave : checkAutosave,
+    checkAutosaveSub : checkAutosaveSub,
+    getVersionForFile : getVersionForFile
   };
   //------------------- END PUBLIC METHODS ---------------------
 }());

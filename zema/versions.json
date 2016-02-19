@@ -1,0 +1,20 @@
+{
+     "version":"20160218",
+     "versionpath":"",
+     "modules":
+     {
+         "zemacore":"1"
+     },
+     "js":
+     {
+         "../zemacore/ressources/scripts/ema.core":"1_2"
+     },
+     "properties":
+     {
+         "config":"1_2"
+     },
+     "json":
+     {
+         "disabled--config":"1_2"
+     }
+ }

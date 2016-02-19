@@ -50,7 +50,7 @@ ema.selectiongenerator = (function () {
       $('#' + searchData[resultlistPath].container).html(strHTML);
       
       ema.formgenerator.generateFooter(true, true, 'ema.selectiongenerator.resetFields(\'' + resultlistPath + '\')', true, searchData[resultlistPath].labelButton, 'ema.selectiongenerator.loadList(\'' + resultlistPath + '\')');
-      ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'));
+      ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'), false);
       //load variants
       loadVariants(resultlistPath);
     } catch (e) {
@@ -447,7 +447,7 @@ ema.selectiongenerator = (function () {
               .find('option')
               .remove()
               .end()
-              .append('<option value="">---Ausw&auml;hlen---</option>')
+              .append('<option value="">' + ema.shell.getLanguageTextString('allgemein', 'lblselect') + '</option>')
               .val('')
             ;
             for (i = 0; i < json[7].length; i += 1) {

@@ -24,13 +24,15 @@ ema.datamanager = (function () {
   putNext, writeUploadData, openIndexedDb, 
   updateUploadEntry, updateSyncStatusSub, extractCallbackFunction, 
   errorMultipleRequests, checkRequestList, doMultipleRequestsSuccess,
+  generateCallbackKey, deleteIndexedDb,
   
   //public functions
   doRequest, doMultipleRequests, requestRecordsByKey, 
   initDatabase, startSynchronisation, startSingleDownloadSync, 
   startUploadByKey, updateSyncStatus, getInboundSyncTasks, 
   getOutboundSyncOperations, getEMADatabase, readOfflineData, 
-  deleteOutboundSyncTask, getStoreName, deleteEntryFromObjectStore;
+  deleteOutboundSyncTask, getStoreName, deleteEntryFromObjectStore,
+  writeAutosaveDataToDatabase;
 
   /*
    * this library manages the data requests to server and to indexed db 
@@ -287,8 +289,11 @@ ema.datamanager = (function () {
   openIndexedDb = function (dbName, dbVersion, sourcePath, navText) {
     try {
       var
-      databaseRequest;
-      
+      databaseRequest,
+      indexedDB;
+
+      window.shimIndexedDB.__useShim();
+      indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || window.shimIndexedDB;
       if (dbVersion !== undefined) {
         databaseRequest = indexedDB.open(dbName, dbVersion);
       } else  {
@@ -299,8 +304,9 @@ ema.datamanager = (function () {
         i,
         j,
         objStore;
-        
-        emaDatabase = e.target.result;
+
+        //emaDatabase = e.target.result;
+        emaDatabase = databaseRequest.result;
         for (i = 0; i < stateMap.requiredObjectStores.length; i += 1) {
           if (!emaDatabase.objectStoreNames.contains(stateMap.requiredObjectStores[i]) && stateMap.requiredObjectStores[i] !== '') {
             objStore = emaDatabase.createObjectStore(stateMap.requiredObjectStores[i]);
@@ -319,7 +325,8 @@ ema.datamanager = (function () {
         newVersion,
         objStore;
         
-        emaDatabase = e.target.result;
+        //emaDatabase = e.target.result;
+        emaDatabase = databaseRequest.result;
         changeVersion = false;
         for (i = 0; i < stateMap.requiredObjectStores.length; i += 1) {
           if (!emaDatabase.objectStoreNames.contains(stateMap.requiredObjectStores[i]) && stateMap.requiredObjectStores[i] !== '') {
@@ -329,16 +336,27 @@ ema.datamanager = (function () {
         if (changeVersion === true) {
           newVersion = emaDatabase.version + 1;
           emaDatabase.close();
-          openIndexedDb(dbName, newVersion, sourcePath, navText);
+          setTimeout(function () {
+            openIndexedDb(dbName, newVersion, sourcePath, navText);
+          }, 1000);
         } else {
           startSynchronisation('both');
           ema.shell.loadKeyValues();
-          ema.shell.changeHash(sourcePath, navText);
+          //ema.shell.changeHash(sourcePath, navText);
+          ema.shell.checkAutosave(sourcePath, navText);
         }
       };        
       databaseRequest.onerror = function (e) {
+        /*
+        var entry;
         emaDatabase = null;
+
         ema.shell.handleCustomError('openIndexedDb', 'errinitdatabase', 'e');
+        */
+        deleteIndexedDb(indexedDB, dbName, sourcePath, navText);
+      };
+      databaseRequest.onabort = function (e) {
+        e.preventDefault();
       };
     } catch (e) {
       ema.shell.handleError('openIndexedDb', e, 'e');
@@ -541,6 +559,46 @@ ema.datamanager = (function () {
     }
   };
   //End INTERNAL method /doMultipleRequestsSuccess/
+  //Begin INTERNAL method /generateCallbackKey/
+  generateCallbackKey = function (callbackKey) {
+    try {
+      var i;
+      
+      if (stateMap.requests[callbackKey] !== undefined) {
+        for (i = 1; i < 1000; i += 1) {
+          if (stateMap.requests[callbackKey + '_' + i] === undefined) {
+            return callbackKey + '_' + i;
+          }
+        }
+      } else {
+        return callbackKey;
+      }
+    } catch (e) {
+      ema.shell.handleError('generateCallbackKey', e, 'e');
+    }
+  };
+  //End INTERNAL method /generateCallbackKey/
+  //Begin INTERNAL method /deleteIndexedDb/
+  deleteIndexedDb = function (indexedDB, dbName, sourcePath, navText) {
+    try {
+      var 
+      DBDeleteRequest;
+      
+      DBDeleteRequest = indexedDB.deleteDatabase(dbName);
+
+      DBDeleteRequest.onerror = function (event) {
+        console.log("Error deleting database.");
+      };
+       
+      DBDeleteRequest.onsuccess = function (event) {
+        console.log("Database deleted successfully");
+        initDatabase(sourcePath, navText);
+      };
+    } catch (e) {
+      ema.shell.handleError('deleteIndexedDb', e, 'e');
+    }
+  };
+  //End INTERNAL method /deleteIndexedDb/
   /** PUBLIC FUNCTIONS**********************************************************************************************************************************************/
   //Begin PUBLIC method /doRequest/
   doRequest = function (operation, request, callbackFunction, reqKey) {
@@ -566,9 +624,9 @@ ema.datamanager = (function () {
           requestString = ema.model.generateRequestObj(request);
           
           if (reqKey !== null) {
-            jsonpcallback = operation + '_' + reqKey;
+            jsonpcallback = generateCallbackKey(operation + '_' + reqKey);
           } else {
-            jsonpcallback = operation + '_' + new Date().getTime();
+            jsonpcallback = generateCallbackKey(operation + '_' + new Date().getTime());
           }
           requestParameter = {};
           requestParameter.callbackFunction = callbackFunction;
@@ -587,7 +645,7 @@ ema.datamanager = (function () {
             type: ema.shell.getConfigMapConfigValue('AJAX_TYPE'),
             data: ema.model.generateRequestObj(request),
             beforeSend: function (xhr) {
-              ema.model.generateAuthHeader(xhr, true);
+              ema.model.generateAuthHeader(xhr);
             },
             success: doRequestSuccess,
             error: function (xhr, status, errorThrown) {
@@ -700,9 +758,7 @@ ema.datamanager = (function () {
                   jsonpCallback: jsonpcallback,
                   type: ema.shell.getConfigMapConfigValue('AJAX_TYPE'),
                   data: ema.model.generateRequestObj(requestObj.requests[request].request),
-                  beforeSend: function (xhr) {
-                    ema.model.generateAuthHeader(xhr, true);
-                  },
+                  beforeSend: ema.model.generateAuthHeader,
                   success: doMultipleRequestsSuccess,
                   error: errorMultipleRequests
                 });
@@ -751,7 +807,7 @@ ema.datamanager = (function () {
         //there is an active connection -> the request can be send to the server
         requestString = ema.model.generateRequestObj(request);
         
-        jsonpcallback = operation + '_' + new Date().getTime();
+        jsonpcallback = generateCallbackKey(operation + '_' + new Date().getTime());
         requestParameter = {};
         requestParameter.callbackFunction = callbackFunction;
         requestParameter.requestString = requestString;
@@ -767,7 +823,7 @@ ema.datamanager = (function () {
           type: ema.shell.getConfigMapConfigValue('AJAX_TYPE'),
           data: ema.model.generateRequestObj(request),
           beforeSend: function (xhr) {
-            ema.model.generateAuthHeader(xhr, true);
+            ema.model.generateAuthHeader(xhr);
           },
           success: doRequestSuccess,
           error: function (xhr, status, errorThrown) {
@@ -849,61 +905,63 @@ ema.datamanager = (function () {
           startSynchronisation(synctype);
         }, 1000);
       } else {
-        setTimeout(function () {
-          var i,      
-          indexedDbConfig,
-          request,
-          syncTask,
-          transaction,
-          objStore,
-          cursor,
-          uploadTasks = [];       //tasks which need to be uploaded
-          
-          indexedDbConfig = ema.shell.getConfigMapIndexedDb();
-          
-          for (i = 0; i < indexedDbConfig.OBJECTSTTORES.length; i += 1) {
-            //check if data needs to be requested at startup
-            if (synctype === 'down' || synctype === 'both') {
-              if (indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG !== undefined) {
-                /*
-                 * available Synctypes:
-                 * - complete - delete existing entries and save newly requested data
-                 * - delta - keep existing entries and overwrite with newly requested data
-                 */
-                request = indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG.REQUESTOBJECT;
-                syncTask = {};
-                syncTask.status = 2;
-                syncTask.statustext = '';
-                syncTask.syncTime = new Date();
-                syncTask.amount = '0';
-                syncTask.synctype = indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG.SYNCTYPE;
-                syncTask.description = indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG.SYNCDESC;
-                syncTask.callback = extractCallbackFunction(indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG.SYNCCOMPLETEJS);
-                stateMap.inboundSyncTasks[indexedDbConfig.OBJECTSTTORES[i].INTERNALNAME] = syncTask;
-                doRequest(indexedDbConfig.OBJECTSTTORES[i].INTERNALNAME, request, 'ema.synchronisation', null);
-              }
-            }
-            if (indexedDbConfig.OBJECTSTTORES[i].UPLOADCONFIG !== undefined) {
-              stateMap.outboundSyncOperations[indexedDbConfig.OBJECTSTTORES[i].INTERNALNAME] = indexedDbConfig.OBJECTSTTORES[i].UPLOADCONFIG.SYNCDESC;
-            }
-          }
-          if (synctype === 'up' || synctype === 'both') {
-            //check if there are pending request for uploadsync
-            transaction = emaDatabase.transaction([getStoreName('UPLOADSYNC')], "readonly");
-            objStore = transaction.objectStore(getStoreName('UPLOADSYNC'));
+        if (ema.shell.getOnlineStatus() === true) {
+          setTimeout(function () {
+            var i,      
+            indexedDbConfig,
+            request,
+            syncTask,
+            transaction,
+            objStore,
+            cursor,
+            uploadTasks = [];       //tasks which need to be uploaded
             
-            cursor = objStore.openCursor();
-            cursor.onsuccess = function (e) {
-              var cursor = e.target.result;
-              if (cursor) {
-                uploadTasks[uploadTasks.length] = cursor.value;
-                cursor['continue']();
-              } else {
-                writeUploadData(uploadTasks);
+            indexedDbConfig = ema.shell.getConfigMapIndexedDb();
+            
+            for (i = 0; i < indexedDbConfig.OBJECTSTTORES.length; i += 1) {
+              //check if data needs to be requested at startup
+              if (synctype === 'down' || synctype === 'both') {
+                if (indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG !== undefined) {
+                  /*
+                   * available Synctypes:
+                   * - complete - delete existing entries and save newly requested data
+                   * - delta - keep existing entries and overwrite with newly requested data
+                   */
+                  request = indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG.REQUESTOBJECT;
+                  syncTask = {};
+                  syncTask.status = 2;
+                  syncTask.statustext = '';
+                  syncTask.syncTime = new Date();
+                  syncTask.amount = '0';
+                  syncTask.synctype = indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG.SYNCTYPE;
+                  syncTask.description = indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG.SYNCDESC;
+                  syncTask.callback = extractCallbackFunction(indexedDbConfig.OBJECTSTTORES[i].DOWNLOADCONFIG.SYNCCOMPLETEJS);
+                  stateMap.inboundSyncTasks[indexedDbConfig.OBJECTSTTORES[i].INTERNALNAME] = syncTask;
+                  doRequest(indexedDbConfig.OBJECTSTTORES[i].INTERNALNAME, request, 'ema.synchronisation', null);
+                }
               }
-            };
-          }
-        }, 500);
+              if (indexedDbConfig.OBJECTSTTORES[i].UPLOADCONFIG !== undefined) {
+                stateMap.outboundSyncOperations[indexedDbConfig.OBJECTSTTORES[i].INTERNALNAME] = indexedDbConfig.OBJECTSTTORES[i].UPLOADCONFIG.SYNCDESC;
+              }
+            }
+            if (synctype === 'up' || synctype === 'both') {
+              //check if there are pending request for uploadsync
+              transaction = emaDatabase.transaction([getStoreName('UPLOADSYNC')], "readonly");
+              objStore = transaction.objectStore(getStoreName('UPLOADSYNC'));
+              
+              cursor = objStore.openCursor();
+              cursor.onsuccess = function (e) {
+                var cursor = e.target.result;
+                if (cursor) {
+                  uploadTasks[uploadTasks.length] = cursor.value;
+                  cursor['continue']();
+                } else {
+                  writeUploadData(uploadTasks);
+                }
+              };
+            }
+          }, 500);
+        }
       }
     } catch (e) {
       ema.shell.handleError('startSynchronisation', e, 'e');
@@ -1036,7 +1094,7 @@ ema.datamanager = (function () {
   };
   // End PUBLIC method /getEMADatabase/
   //Begin PUBLIC method /readOfflineData/
-  readOfflineData = function (internalName, keys, callbackFunction) {
+  readOfflineData = function (internalName, keys, callbackFunction, saveKeys) {
     try {
       var 
       transaction,
@@ -1049,10 +1107,17 @@ ema.datamanager = (function () {
       
       cursor = objStore.openCursor();
       cursor.onsuccess = function (e) {
-        var cursor = e.target.result;
+        var 
+        cursor;
+        
+        cursor = e.target.result;
         if (cursor) {
           if (keys === null || keys[cursor.key] !== undefined) {
-            reqData[reqData.length] = cursor.value.data;
+            if (saveKeys === true) {
+              reqData[reqData.length] = cursor.value;
+            } else {
+              reqData[reqData.length] = cursor.value.data;
+            }
           }
           cursor['continue']();
         } else {
@@ -1106,7 +1171,7 @@ ema.datamanager = (function () {
     }
   };
   //End PUBLIC method /getStoreName/
-  //Begin INTERNAL method /deleteEntryFromObjectStore/
+  //Begin PUBLIC method /deleteEntryFromObjectStore/
   deleteEntryFromObjectStore = function (storeName, key) {
     try {
       var 
@@ -1121,7 +1186,16 @@ ema.datamanager = (function () {
       ema.shell.handleError('deleteEntryFromObjectStore', e, 'e');
     }
   };
-  //End INTERNAL method /deleteEntryFromObjectStore/
+  //End PUBLIC method /deleteEntryFromObjectStore/
+  //Begin PUBLIC method /writeAutosaveDataToDatabase/
+  writeAutosaveDataToDatabase = function (dataList) {
+    try {
+      writeMultipleEntriesToDatabase('AUTOSAVESTORE', dataList);
+    } catch (e) {
+      ema.shell.handleError('writeAutosaveDataToDatabase', e, 'e');
+    }
+  };
+  //End PUBLIC method /writeAutosaveDataToDatabase/
   
   return {
     doRequest : doRequest,
@@ -1138,6 +1212,7 @@ ema.datamanager = (function () {
     readOfflineData : readOfflineData,
     deleteOutboundSyncTask : deleteOutboundSyncTask,
     getStoreName : getStoreName,
-    deleteEntryFromObjectStore : deleteEntryFromObjectStore
+    deleteEntryFromObjectStore : deleteEntryFromObjectStore,
+    writeAutosaveDataToDatabase : writeAutosaveDataToDatabase
   };
 }());

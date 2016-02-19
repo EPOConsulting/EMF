@@ -19,7 +19,9 @@
 		"lblimgreset":"<i class=\"icon-cancel\"></i>",
 		"lblbuttondelete":"l&ouml;schen",
 		"lblbuttonproceed":"Fortsetzen<i class=\"icon-ok\"></i>",
-		"lblconfirm":"Die von Ihnen erfassten Daten wurden noch nicht gespeichert!/nWenn Sie fortfahren kann es zu Datenverlust kommen!",
+		"lblbuttonexit":"App beenden<i class=\"icon-ok\"></i>",
+		"lblconfirm":"Die von Ihnen erfassten Daten wurden noch nicht gespeichert!</br>Wenn Sie fortfahren kann es zu Datenverlust kommen!",
+		"lblautosave":"Es wurden gespeicherte Daten gefunden!</br>Wollen Sie die Bearbeitung fortsetzen?",
 		"lbllogoutconfirm":"Wollen Sie ausloggen?",
 		"lblsystem":"System",
 		"lblonline":"<i class=\"icon-wifi\"></i>Online",
@@ -52,7 +54,11 @@
 		"lblerror4decimalplaces":"<i class=\"icon-angle-left\"></i>Bitte maximal 4 Kommastellen eingeben!",
 		"lblerror5decimalplaces":"<i class=\"icon-angle-left\"></i>Bitte maximal 5 Kommastellen eingeben!",
 		"lblto":"bis",
-		"lblsave":"Speichern"
+		"lblsave":"Speichern",
+		"lblselect":"---Please select---",
+		"lblautosaveactive":"Autosave ist aktiv",
+		"lblautosaveinactive":"Autosave ist inaktiv",
+		"lbllastautosave":"letzte Speicherung"
 	},
     "errors":
     {

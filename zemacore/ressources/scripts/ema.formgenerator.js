@@ -15,7 +15,9 @@ ema.formgenerator = (function () {
   generateHeader, generateFooter, generateRow, 
   generateSelectRow, generateCheckboxRow, generateDateTimeRow, 
   generateButtonRow, generateDialog, generateActionDialog, 
-  generateNumberFieldRow, getLoadingAnimation;
+  generateNumberFieldRow, getLoadingAnimation, showError,
+  hideError, showHelpLayer, openHelpInNewWindow,
+  generateSearchHelp;
   /** INTERNAL FUNCTIONS**********************************************************************************************************************************************/
   //Begin INTERNAL method /generateLabel/
   generateLabel = function (labelValue, labelClass, fieldId) {
@@ -27,13 +29,38 @@ ema.formgenerator = (function () {
   };
   // End INTERNAL method /generateLabel/
   // Begin INTERNAL method /generateErrorLabel/
-  generateErrorLabel = function (errorValue, errorLabelClass, errorId, showErrorDiv) {
+  generateErrorLabel = function (errorValue, errorLabelClass, fieldId, showErrorDiv) {
     try {
-      if (showErrorDiv === true) {
-        return '<div class="ferror ' + errorLabelClass + '" id="' + errorId + '">' + errorValue + '</div>';
-      } else {
-        return '<div class="ferror ' + errorLabelClass + '" id="' + errorId + '" style="display:none">' + errorValue + '</div>';
+      var 
+      retStr,
+      contextHelpStr,
+      strPartExternal,
+      strPartContext;
+      
+      contextHelpStr = '';
+      if (ema.shell.getConfigMapConfigValue('SHOWHELPIDS') === 'true') {
+        contextHelpStr += '<div>ID: ' + fieldId + '</div>';
       }
+      if (ema.shell.getConfigMapConfigValue('EXTERNALHELP') === 'true') {
+        strPartExternal = ema.shell.getConfigMapExternalHelpValue(fieldId);
+        if (strPartExternal !== '' && strPartExternal !== undefined) {
+          contextHelpStr += '<div><a onclick="ema.formgenerator.showHelpLayer(\'' + strPartExternal + '\')"><i class="icon-help"></i></a></div>';
+        }
+      }
+      if (ema.shell.getConfigMapConfigValue('CONTEXTHELP') === 'true') {
+        strPartContext = ema.shell.getLanguageTextString('contexthelp', fieldId + '_ch');
+        if (strPartContext !== fieldId + '_ch') {
+          contextHelpStr += '<div class="' + fieldId + '_ch">' + strPartContext + '</div>';
+        }
+      }
+      if (showErrorDiv === true) {
+        retStr = '<div class="ferror ' + errorLabelClass + '" id="error_' + fieldId + '">' + errorValue + '</div>';
+        retStr += '<div class="fcontext" id="context_' + fieldId + '" style="display:none">' + contextHelpStr + '</div>';
+      } else {
+        retStr = '<div class="ferror ' + errorLabelClass + '" id="error_' + fieldId + '" style="display:none">' + errorValue + '</div>';
+        retStr += '<div class="fcontext" id="context_' + fieldId + '">' + contextHelpStr + '</div>';
+      }
+      return retStr;
     } catch (e) {
       ema.shell.handleError('generateErrorLabel', e, 'e');
     }
@@ -258,7 +285,7 @@ ema.formgenerator = (function () {
         }
         strHtml += '</div>';
       }
-      strHtml += generateErrorLabel(errorValue, errorLabelClass, 'error_' + fieldId, showErrorDiv);
+      strHtml += generateErrorLabel(errorValue, errorLabelClass, fieldId, showErrorDiv);
       strHtml += '</div>';
       if (fieldType !== 'emptylow' && fieldType !== 'textlow' && fieldType !== 'datelow') {
         strHtml += '<div class="w100p h20"></div>';
@@ -286,7 +313,7 @@ ema.formgenerator = (function () {
       } else {
         strHtml += '<select name="' + fieldId + '" id="' + fieldId + '" class="select" ' + jsEvent + ' >';
       }
-      strHtml += '<option value="">---Ausw&auml;hlen---</option>';
+      strHtml += '<option value="">' + ema.shell.getLanguageTextString('allgemein', 'lblselect') + '</option>';
       for (entry  in selection) {
         if (selection.hasOwnProperty(entry)) {
           strHtml += '<option value="' + entry + '" ';
@@ -298,7 +325,7 @@ ema.formgenerator = (function () {
       }
       strHtml += '</select>';
       strHtml += '</div>';
-      strHtml += generateErrorLabel(errorValue, errorLabelClass, 'error_' + fieldId, showErrorDiv);
+      strHtml += generateErrorLabel(errorValue, errorLabelClass, fieldId, showErrorDiv);
       strHtml += '</div>';
       strHtml += '<div class="w100p h20"></div>';
 
@@ -339,7 +366,7 @@ ema.formgenerator = (function () {
           }
           strHtml += '><label class="css-label" for="' + fieldId + i + '">' + selection[entry] + '</label>';
           strHtml += '</div>';
-          strHtml += generateErrorLabel(errorValue, errorLabelClass, 'error_' + fieldId, showErrorDiv);
+          strHtml += generateErrorLabel(errorValue, errorLabelClass, fieldId, showErrorDiv);
           if (i === 0) {
             labelClass = '';
             labelValue = '';
@@ -386,7 +413,7 @@ ema.formgenerator = (function () {
       }
       
       strHtml += '</div>';
-      strHtml += generateErrorLabel(errorValue, errorLabelClass, 'error_' + fieldId, showErrorDiv);
+      strHtml += generateErrorLabel(errorValue, errorLabelClass, fieldId, showErrorDiv);
       strHtml += '</div>';
       strHtml += '<div class="w100p h20"></div>';
 
@@ -411,7 +438,7 @@ ema.formgenerator = (function () {
       strHtml += '<button onclick="' + buttonFunction + ';" class="tbg">' + buttonText + '</button>';
       strHtml += '</div>';
       strHtml += '</div>';
-      strHtml += generateErrorLabel(errorValue, errorLabelClass, 'error_' + fieldId, showErrorDiv);
+      strHtml += generateErrorLabel(errorValue, errorLabelClass, fieldId, showErrorDiv);
       strHtml += '</div>';
       strHtml += '<div class="w100p h20"></div>';
 
@@ -440,8 +467,8 @@ ema.formgenerator = (function () {
       ema.shell.handleError('generateDialog', e, 'e');
     }
   };
-//End PUBLIC method /generateDialog/
-//Begin PUBLIC method /generateActionDialog/
+  //End PUBLIC method /generateDialog/
+  //Begin PUBLIC method /generateActionDialog/
   /*
    * generates a dialog for user action - this dialog is not hidden on click
    */
@@ -466,7 +493,7 @@ ema.formgenerator = (function () {
       ema.shell.handleError('generateActionDialog', e, 'e');
     }
   };
-//End PUBLIC method /generateActionDialog/
+  //End PUBLIC method /generateActionDialog/
   // Begin PUBLIC method /generateNumberField/
   generateNumberFieldRow = function (fieldId, fieldValue, kommastellen, jsEvent, disabled, labelValue, labelClass, errorValue, errorLabelClass, showErrorDiv) {
     try {
@@ -484,7 +511,7 @@ ema.formgenerator = (function () {
       }
 
       strHtml += '</div>';
-      strHtml += generateErrorLabel(errorValue, 'lblerror' + kommastellen + 'kommastellen', 'error_' + fieldId, showErrorDiv);
+      strHtml += generateErrorLabel(errorValue, 'lblerror' + kommastellen + 'decimalplaces', fieldId, showErrorDiv);
       strHtml += '</div>';
       strHtml += '<div class="w100p h20"></div>';
       
@@ -493,14 +520,14 @@ ema.formgenerator = (function () {
       ema.shell.handleError('generateNumberField', e, 'e');
     }
   };
-//End PUBLIC method /generateNumberField/
+  //End PUBLIC method /generateNumberField/
   // Begin PUBLIC method /getLoadingAnimation/
-  getLoadingAnimation = function (animSize, standalone) {
+  getLoadingAnimation = function (animSize, getAnimOnly) {
     try {
       var strHtml;
       
       strHtml = '';
-      if (standalone === false) {
+      if (getAnimOnly === false) {
         strHtml += '<div class="w100p mhcontent">';
         strHtml += '<div class="w100p h100"></div>';
         strHtml += '<div class="w100p c">';
@@ -508,11 +535,11 @@ ema.formgenerator = (function () {
       if (animSize === 'large') {
         strHtml += '<div class="large progress w100p"><div class="w100p"><img src="' + ema.shell.getConfigMapConfigValue('COREPATH') + 'ressources/css/images/loader_grey.gif"></img></div></div>';
       } else if (animSize === 'medium') {
-        strHtml += '<div class="progress"><div>Loading…</div></div>';
+        strHtml += '<div class="progress"><div>Loadingï¿½</div></div>';
       } else {
-        strHtml = '<div class="small progress"><div>Loading…</div></div>';
+        strHtml = '<div class="small progress"><div>Loadingï¿½</div></div>';
       }
-      if (standalone === false) {
+      if (getAnimOnly === false) {
         strHtml += '</div>';
         strHtml += '</div>';
       }
@@ -522,7 +549,74 @@ ema.formgenerator = (function () {
       ema.shell.handleError('getLoadingAnimation', e, 'e');
     }
   };
-//End PUBLIC method /getLoadingAnimation/
+  //End PUBLIC method /getLoadingAnimation/
+  // Begin PUBLIC method /showError/
+  showError = function (fieldId) {
+    try {
+      $('#error_' + fieldId).show();
+      $('#context_' + fieldId).hide();
+    } catch (e) {
+      ema.shell.handleError('showError', e, 'e');
+    }
+  };
+//End PUBLIC method /showError/
+  // Begin PUBLIC method /hideError/
+  hideError = function (fieldId) {
+    try {
+      $('#error_' + fieldId).hide();
+      $('#context_' + fieldId).show();
+    } catch (e) {
+      ema.shell.handleError('hideError', e, 'e');
+    }
+  };
+//End PUBLIC method /hideError/
+  // Begin PUBLIC method /showHelpLayer/
+  showHelpLayer = function (uri) {
+    try {
+      $('#ema_external_help_frame').attr('src', uri);
+      ema.shell.showDialog('ema_external_help');
+    } catch (e) {
+      ema.shell.handleError('showHelpLayer', e, 'e');
+    }
+  };
+//End PUBLIC method /showHelpLayer/
+// Begin PUBLIC method /openHelpInNewWindow/
+  openHelpInNewWindow = function () {
+    try {
+      window.open($('#ema_external_help_frame').attr('src'), '_new');
+      ema.shell.showDialog('ema_external_help');
+    } catch (e) {
+      ema.shell.handleError('openHelpInNewWindow', e, 'e');
+    }
+  };
+//End PUBLIC method /openHelpInNewWindow/
+  // Begin Public method /generateSearchHelp/
+  generateSearchHelp = function (fieldId, jsFunction, btnLabel, searchParamList) {
+    try {
+      var
+      entry,
+      strHtml;
+      
+      strHtml = '<div class="w100p">';
+      strHtml += '<div class="w30p">&nbsp;</div>'; 
+      strHtml += '<div class="w60p labelsmall">';
+      strHtml += 'Suche:';
+      for (entry in searchParamList) {
+        if (searchParamList.hasOwnProperty(entry)) {
+          strHtml += entry + '/<a onclick="ema.model.addSearchParameter(\'' + fieldId + '\', \'' + searchParamList[entry] + '\');">' + searchParamList[entry] + '</a>, '; 
+        }
+      }
+      strHtml += '</div></div>';
+
+      strHtml += generateRow('empty', fieldId + '_selectButton', '<button onclick="' + jsFunction + '" class="tbg button_load ' + btnLabel + '"><i class="icon-down"></i></button>', '', false, '', '', '', '', false);
+      
+      return strHtml;
+      
+    } catch (e) {
+      ema.shell.handleError('ema_generateSearchHelp', e, 'e');
+    }
+  };
+  // End PUBLIC method /generateSearchHelp/
 
   return { 
     generateHeader : generateHeader,
@@ -535,7 +629,12 @@ ema.formgenerator = (function () {
     generateDialog : generateDialog,
     generateActionDialog : generateActionDialog,
     generateNumberFieldRow : generateNumberFieldRow,
-    getLoadingAnimation : getLoadingAnimation
+    getLoadingAnimation : getLoadingAnimation,
+    showError : showError,
+    hideError : hideError,
+    showHelpLayer : showHelpLayer,
+    openHelpInNewWindow : openHelpInNewWindow,
+    generateSearchHelp : generateSearchHelp
   };
 //------------------- END PUBLIC METHODS ---------------------
 }());

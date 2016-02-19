@@ -10,27 +10,29 @@ ema.model = (function () {
   logouttimer = null,
 
   //internal functions
-  setLanguagePattern,
+  setLanguagePattern, getUriParameterSub, base64Encode,
 
   //public functions
   saveToLocalStorage, loadFromLocalStorage, startTimerTask,
   terminateTimerTask, checkLogoutTime, loadLanguagePattern,
-  setLogoutTime, generateRequestURL, generateSearchURL,
-  formatDateForSap, formatTimeForSap, formatSapDateForDisplay, 
-  formatDateTimeForDisplay, formatDateForDisplay, formatTimeForDisplay,
-  generateLeadingZeros, generateCurrentDateTime, getUriParameter, 
-  getUri, getDecodedUri, getHostname, 
-  generateJSDate, formatNumberForDisplay, formatCurrencyForDisplay,
-  formatNumberForSAP, validateNumericInput, formatSAPDateForInputField,
-  replaceSpecialChars, isNumber, generateAuthHeader, 
-  generateRequestObj, detectBrowser;
+  setLogoutTime, setAutosaveNextSave, generateRequestURL, 
+  generateSearchURL, formatDateForSap, formatTimeForSap, 
+  formatSapDateForDisplay, formatDateTimeForDisplay, formatDateForDisplay, 
+  formatTimeForDisplay, generateLeadingZeros, generateCurrentDateTime, 
+  getUriParameter, getUri, getDecodedUri, 
+  getHostname, generateJSDate, formatNumberForDisplay, 
+  formatCurrencyForDisplay, formatNumberForSAP, validateNumericInput, 
+  formatSAPDateForInputField, replaceSpecialChars, isNumber, 
+  generateAuthHeader, generateRequestObj, detectBrowser, 
+  removeLineBreak, addLineBreak, checkLanguagePattern,
+  addSearchParameter;
 
   /** INTERNAL FUNCTIONS**********************************************************************************************************************************************/
   //Begin INTERNAL method /setLanguagePattern/
   /*
    * loads selected language
    */
-  setLanguagePattern = function () {
+  setLanguagePattern = function (generateMenu) {
     try {
       var 
       category = null, 
@@ -45,11 +47,104 @@ ema.model = (function () {
           }
         }
       }
+      if (ema.menu !== undefined && generateMenu === true) {
+        ema.menu.generateMenu();
+      }
     } catch (e) {
       ema.shell.handleError("setLanguagePattern", e, 'e');
     }
   };
   //End INTERNAL method /setLanguagePattern/
+  //Begin INTERNAL method /getUriParameterSub/
+  getUriParameterSub = function (paramStr, paramName) {
+    try {
+      var
+      i,
+      strReturn,
+      strReturnSub,
+      uriParams,
+      paramPairs,
+      paramValue;
+      
+      strReturn = null;
+      
+      if (paramStr.indexOf('&') !== -1) {
+        //there is more then one parameter in the string
+        uriParams = decodeURIComponent(paramStr);
+        paramPairs = uriParams.split('&');
+        for (i = 0; i < paramPairs.length; i += 1) {
+          strReturnSub = getUriParameterSub(paramPairs[i], paramName);
+          if (strReturnSub !== null) {
+            strReturn = strReturnSub;
+          }
+        }
+      } else if (paramStr.toLowerCase().indexOf(paramName.toLowerCase() + '=') > -1) {
+        //parameter found
+        paramValue = paramStr.split('=');
+        if (paramValue[0].toLowerCase() === paramName.toLowerCase()) {
+          strReturn = paramValue[1];
+        }
+      } else {
+        //try to decode the param once more
+        try {
+          uriParams = decodeURIComponent(window.atob(paramStr));
+          strReturnSub = getUriParameterSub(uriParams, paramName);
+          if (strReturnSub !== null) {
+            strReturn = strReturnSub;
+          }
+        } catch (e2) {}
+      }
+
+      return strReturn;
+    } catch (e) {
+      ema.shell.handleError("getUriParameterSub", e, 'e');
+    }
+  };
+  //End INTERNAL method /getUriParameterSub/
+  //Begin INTERNAL method /Base64Encode/
+  base64Encode = function (stringToEncode) {
+    try {
+      var b64, o1, o2, o3, bits, h1, h2, h3, h4, e = [], pad = '', c;
+      
+      if (/([^\u0000-\u00ff])/.test(stringToEncode)) throw Error('String must be ASCII');
+
+      b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+      c = stringToEncode.length % 3;  // pad string to length of multiple of 3
+      if (c > 0) { 
+        while (c++ < 3) { 
+          pad += '='; 
+          stringToEncode += '\0'; 
+        } 
+      }
+      // note: doing padding here saves us doing special-case packing for trailing 1 or 2 chars
+
+      for (c = 0; c < stringToEncode.length; c += 3) {  // pack three octets into four hexets
+        o1 = stringToEncode.charCodeAt(c);
+        o2 = stringToEncode.charCodeAt(c + 1);
+        o3 = stringToEncode.charCodeAt(c + 2);
+
+        bits = o1<<16 | o2<<8 | o3;
+
+        h1 = bits>>18 & 0x3f;
+        h2 = bits>>12 & 0x3f;
+        h3 = bits>>6 & 0x3f;
+        h4 = bits & 0x3f;
+
+        // use hextets to index into code string
+        e[c / 3] = b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
+      }
+      stringToEncode = e.join('');  // use Array.join() for better performance than repeated string appends
+
+      // replace 'A's from padded nulls with '='s
+      stringToEncode = stringToEncode.slice(0, stringToEncode.length - pad.length) + pad;
+
+      return stringToEncode;
+    } catch (error) {
+      ema.shell.handleError("getUriParameterSub", error, 'e');
+    }
+  };
+  //End INTERNAL method /getUriParameterSub/
   /** PUBLIC FUNCTIONS**********************************************************************************************************************************************/
   //Begin PUBLIC method /saveToLocalStorage/
   saveToLocalStorage = function (key, value) {
@@ -86,6 +181,7 @@ ema.model = (function () {
 
       logouttimer.onmessage = function (event) {
         ema.model.checkLogoutTime(event);
+        ema.shell.processAutosave();
       };
     } catch (e) {
       ema.shell.handleError("startTimerTask", e, 'e');
@@ -134,17 +230,31 @@ ema.model = (function () {
     }
   };
   //End PUBLIC method /setLogoutTime/
+  //Begin PUBLIC method /setAutosaveNextSave/
+  /*
+   * sets AutosaveNextSave to now + x minutes
+   */
+  setAutosaveNextSave = function () {
+    try {
+      var datum = new Date();
+      datum.setMinutes(datum.getMinutes() + (ema.shell.getConfigMapConfigValue('AUTOSAVEMINUTES') * 1));
+      saveToLocalStorage("AutosaveNextSave", datum.getTime());
+    } catch (e) {
+      ema.shell.handleError("setAutosaveNextSave", e, 'e');
+    }
+  };
+  //End PUBLIC method /setAutosaveNextSave/
   //Begin PUBLIC method /loadLanguagePattern/
   /*
    * loads a language json from local storage and sets the language
    */
-  loadLanguagePattern = function (newLanguage) {
+  loadLanguagePattern = function (newLanguage, generateMenu) {
     try {
       if (ema.shell.getStateMapValue('languageJson') === undefined) {
         ema.shell.setLanguage(JSON.parse(loadFromLocalStorage('languageString_' + newLanguage)));
-        setLanguagePattern();
+        setLanguagePattern(generateMenu);
       } else {
-        setLanguagePattern();
+        setLanguagePattern(generateMenu);
       }
     } catch (e) {
       ema.shell.handleError("loadLanguagePattern", e, 'e');
@@ -235,6 +345,10 @@ ema.model = (function () {
       reqURL += "&sap-language=" + ema.shell.getStateMapValue('selected_language').toLowerCase();
       reqURL += "&timeout=" + ema.shell.getConfigMapConfigValue('HOSTTIMEOUT');
       reqURL += "&format=1";
+      if (ema.shell.getConfigMapConfigValue('AJAX_AUTH') === 'url') {
+        reqURL += "&sap-user=" + loadFromLocalStorage("curr_username");
+        reqURL += "&sap-password=" + replaceSpecialChars(loadFromLocalStorage("curr_password"));
+      }
       reqURL += "&limit=" + limit;
       reqURL += "&table=" + table;
       reqURL += "&showperpage=" + limit;
@@ -461,7 +575,11 @@ ema.model = (function () {
         while (strReturn.length < digits) {
           strReturn = '0' + strReturn;
         }
-        return strReturn;
+        if (strReturn.length > digits) {
+          return strReturn.substring(0, digits);
+        } else {
+          return strReturn;
+        }
       }
     } catch (e) {
       ema.shell.handleError("generateLeadingZeros", e, 'e');
@@ -472,46 +590,12 @@ ema.model = (function () {
   getUriParameter = function (uri, paramName) {
     try {
       var
-      i,
-      j,
       strReturn,
-      uriSplit,
-      uriParams,
-      uriParamsInner,
-      paramPairs,
-      paramPairsInner,
-      paramValue;
-      
+      uriSplit;      
       strReturn = null;
       uriSplit = uri.split('#');
       if (uriSplit.length > 1) {
-        //paramters were found - check of they are base64 encoded
-        if (uriSplit[1].indexOf('&') !== -1) {
-          uriParams = decodeURIComponent(uriSplit[1]);
-        } else {
-          uriParams = decodeURIComponent(window.atob(uriSplit[1]));
-        }
-        paramPairs = uriParams.split('&');
-        for (i = 0; i < paramPairs.length; i += 1) {
-          if (paramPairs[i].toLowerCase().indexOf(paramName.toLowerCase() + '=') > -1) {
-            paramValue = paramPairs[i].split('=');
-            if (paramValue[0].toLowerCase() === paramName.toLowerCase()) {
-              strReturn = paramValue[1];
-            }
-          } else {
-            try {
-              uriParamsInner = decodeURIComponent(window.atob(paramPairs[i]));
-              
-              paramPairsInner = uriParamsInner.split('&');
-              for (j = 0; j < paramPairsInner.length; j += 1) {
-                paramValue = paramPairsInner[j].split('=');
-                if (paramValue[0].toLowerCase() === paramName.toLowerCase()) {
-                  strReturn = paramValue[1];
-                }
-              }
-            } catch (e2) {}
-          }
-        }
+        strReturn = getUriParameterSub(uriSplit[1], paramName);
       }
 
       return strReturn;
@@ -646,14 +730,16 @@ ema.model = (function () {
   validateNumericInput = function (fieldId, kommastellen) {
     try {
       var betragSplit;
-      $('#error_' + fieldId).hide();
+      ema.formgenerator.hideError(fieldId);
       if (isNumber($('#' + fieldId).val()) === false) {
-        $('#error_' + fieldId).show();
-        $('#' + fieldId).val('');
+        ema.formgenerator.showError(fieldId);
+        if (event.type === 'blur') {
+          $('#' + fieldId).val('');
+        }
       } else if ($('#' + fieldId).val().indexOf('.') > -1) {
         betragSplit = $('#' + fieldId).val().split('.');
         if (betragSplit[1].length > kommastellen) {
-          $('#error_' + fieldId).show();
+          ema.formgenerator.showError(fieldId);
           if (kommastellen * 1 === 0) {
             $('#' + fieldId).val(betragSplit[0]);
           } else {
@@ -706,16 +792,17 @@ ema.model = (function () {
   };
   //End PUBLIC method /isNumber/
   //Begin PUBLIC method /generateAuthHeader/
-  generateAuthHeader = function (xhr, addLogonInformation) {
+  generateAuthHeader = function (xhr) {
     try {
-      if (addLogonInformation === true && ema.shell.getConfigMapConfigValue('AJAX_AUTH') === 'saphttpfields') {
+      if (ema.shell.getConfigMapConfigValue('AJAX_AUTH') === 'saphttpfields') {
         xhr.setRequestHeader("sap-language", ema.shell.getStateMapValue('selected_language').toUpperCase());
         xhr.setRequestHeader("sap-client", ema.shell.getConfigMapConfigValue('CLIENT'));
         xhr.setRequestHeader("sap-user", loadFromLocalStorage("curr_username"));
         xhr.setRequestHeader("sap-password", loadFromLocalStorage("curr_password"));
-      }
-      if (addLogonInformation === true && ema.shell.getConfigMapConfigValue('AJAX_AUTH') === 'basic') {
-        xhr.setRequestHeader("Authorization", "Basic " + window.btoa(encodeURI(loadFromLocalStorage("curr_username") + ":" + loadFromLocalStorage("curr_password"))));
+      } else if (ema.shell.getConfigMapConfigValue('AJAX_AUTH') === 'basic') {
+        //xhr.setRequestHeader("Authorization", "Basic " + window.btoa(encodeURI(loadFromLocalStorage("curr_username") + ":" + loadFromLocalStorage("curr_password"))));
+        //xhr.setRequestHeader("Authorization", "Basic " + window.btoa(unescape(encodeURIComponent(loadFromLocalStorage("curr_username") + ":" + loadFromLocalStorage("curr_password")))));      
+        xhr.setRequestHeader("Authorization", "Basic " + base64Encode(loadFromLocalStorage("curr_username") + ":" + loadFromLocalStorage("curr_password")));      
       }
     } catch (e) {
       ema.shell.handleError("generateAuthHeader", e, 'e');
@@ -761,6 +848,86 @@ ema.model = (function () {
     }
   };
   //End PUBLIC method /detectBrowser/
+  //Begin PUBLIC method /removeLineBreak/
+  removeLineBreak = function (origStr) {
+    try {
+      if (origStr === undefined || origStr === '') {
+        return '';
+      } else {
+        return origStr.replace(/\n/g, "<br/>");
+      }
+    } catch (e) {
+      ema.shell.handleError("removeLineBreak", e, 'e');
+    }
+  };
+  //End PUBLIC method /removeLineBreak/
+  //Begin PUBLIC method /addLineBreak/
+  addLineBreak = function (origStr) {
+    try {
+      if (origStr === undefined || origStr === '') {
+        return '';
+      } else {
+        return origStr.replace(/<br\s*\/?>/mg, "\n");
+      }
+    } catch (e) {
+      ema.shell.handleError("addLineBreak", e, 'e');
+    }
+  };
+  //End PUBLIC method /addLineBreak/
+  //Begin PUBLIC method /checkLanguagePattern/
+  /*
+   * checks language json for duplicates with different texts
+   */
+  checkLanguagePattern = function () {
+    try {
+      var 
+      category = null, 
+      item = null,
+      json = ema.shell.getStateMapValue('languageJson'),
+      refJson = {},
+      errorList = {};
+      
+      if (json !== undefined) {
+        for (category in json) {
+          if (json.hasOwnProperty(category)) {
+            for (item in json[category]) {
+              if (json[category].hasOwnProperty(item)) {
+                if (refJson[item] === undefined) {
+                  refJson[item] = json[category][item];
+                } else {
+                  if (refJson[item] !== json[category][item]) {
+                    if (errorList[item] !== undefined) {
+                      errorList[item] = refJson[item];
+                    }
+                    errorList[item] += ' - ' + json[category][item];
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      return errorList;
+    } catch (e) {
+      ema.shell.handleError("checkLanguagePattern", e, 'e');
+    }
+  };
+  //End PUBLIC method /checkLanguagePattern/
+  // Begin Public method /addSearchParameter/
+  addSearchParameter = function (fieldId, param) {
+    try {
+      if ($('#' + fieldId).val() !== '') {
+        $('#' + fieldId).val($('#' + fieldId).val() + ' ' + param + ':');
+      } else {
+        $('#' + fieldId).val(param + ':');
+      }
+      $('#' + fieldId).focus();
+    } catch (e) {
+      ema.shell.handleError('ema_addSearchParameter', e, 'e');
+    }
+  };
+  // End PUBLIC method /addSearchParameter/
   
   return {
     saveToLocalStorage : saveToLocalStorage, 
@@ -770,6 +937,7 @@ ema.model = (function () {
     checkLogoutTime : checkLogoutTime,
     loadLanguagePattern : loadLanguagePattern,
     setLogoutTime : setLogoutTime,
+    setAutosaveNextSave : setAutosaveNextSave,
     generateRequestURL : generateRequestURL,
     generateSearchURL : generateSearchURL,
     formatDateForSap : formatDateForSap,
@@ -794,6 +962,10 @@ ema.model = (function () {
     isNumber : isNumber,
     generateAuthHeader : generateAuthHeader,
     generateRequestObj : generateRequestObj,
-    detectBrowser : detectBrowser
+    detectBrowser : detectBrowser,
+    removeLineBreak : removeLineBreak,
+    addLineBreak : addLineBreak,
+    checkLanguagePattern : checkLanguagePattern,
+    addSearchParameter : addSearchParameter
   };
 }());

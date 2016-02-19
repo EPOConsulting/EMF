@@ -19,7 +19,7 @@ ema.listgenerator = (function () {
   generateRow, generateSumRow, generateHeader, 
   initializeSortedList, sortList, searchList, 
   addRowToSortedList, editRowInSortedList, removeRowFromSortedList,
-  deleteListData;
+  deleteListData, showHideAllSections;
 
   /** INTERNAL FUNCTIONS**********************************************************************************************************************************************/
   //Begin INTERNAL method /generateColumn/
@@ -207,7 +207,7 @@ ema.listgenerator = (function () {
       i,
       totalWidth = 0,
       strHtml = '',
-      strRowIds = '';
+      tmpPath;
       
       for (i = 0; i < listData.rows[0].columnValues.length; i += 1) {
         totalWidth += listData.columnWidth[i];
@@ -216,14 +216,6 @@ ema.listgenerator = (function () {
         strHtml += '<div class="w95p">';
       } else {
         strHtml += '<div class="w100p">';
-      }
-      for (i = 0; i < listData.rows.length; i += 1) {
-        //RowIds merken
-        if (strRowIds === '') {
-          strRowIds = '\'' + listData.rows[i].rowId + '\'';
-        } else {
-          strRowIds += ', \'' + listData.rows[i].rowId + '\'';
-        }
       }
       
       for (i = 0; i < listData.rows[0].columnValues.length; i += 1) {
@@ -246,7 +238,9 @@ ema.listgenerator = (function () {
       }
       strHtml += '</div>';
       if (listData.hasHiddenSection === true) {
-        strHtml += '<div class="w5p"><button onclick="ema.shell.showSections([' + strRowIds + ']);"><i class="icon-plus iconSmall"></i></button><button onclick="ema.shell.hideSections([' + strRowIds + ']);"><i class="icon-minus iconSmall"></i></button></div>';
+        tmpPath = listData.path.replace(/\//g, "_").replace(/\./g, "");
+        //strHtml += '<div class="w5p"><button onclick="ema.shell.showSections([' + strRowIds + ']);"><i class="icon-plus iconSmall"></i></button><button onclick="ema.shell.hideSections([' + strRowIds + ']);"><i class="icon-minus iconSmall"></i></button></div>';
+        strHtml += '<div class="w5p"><button onclick="ema.listgenerator.showHideAllSections(\'' + listData.path + '\');"><i id="listShowHideAll_' + tmpPath + '" class="icon-plus iconMed"></i></button></div>';
       }
       
       return strHtml;
@@ -574,7 +568,7 @@ ema.listgenerator = (function () {
         
         generateSortedList(listDataCollection[path], drawRowsOnly);
                 
-        ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'));
+        ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'), false);
       }
     } catch (e) {
       ema.shell.handleError('sortList', e, 'e');
@@ -598,7 +592,7 @@ ema.listgenerator = (function () {
           elem.focus();
           elem[0].setSelectionRange(elem.val().length, elem.val().length);
           
-          ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'));
+          ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'), false);
         }
       }
     } catch (e) {
@@ -670,6 +664,34 @@ ema.listgenerator = (function () {
     }
   };
   //End PUBLIC method /deleteListData/
+  //Begin PUBLIC method /showHideAllSections/
+  showHideAllSections = function (path) {
+    try {
+      var
+      i,
+      rowIds,
+      tmpPath;
+      
+      rowIds = [];
+      tmpPath = path.replace(/\//g, "_").replace(/\./g, "");
+      
+      for (i = 0; i < listDataCollection[path].rows.length; i += 1) {
+        rowIds.push(listDataCollection[path].rows[i].rowId);
+      }
+      if ($('#listShowHideAll_' + tmpPath).hasClass('icon-plus') === true) {
+        $('#listShowHideAll_' + tmpPath).addClass('icon-minus');
+        $('#listShowHideAll_' + tmpPath).removeClass('icon-plus');
+        ema.shell.showSections(rowIds);
+      } else {
+        $('#listShowHideAll_' + tmpPath).removeClass('icon-minus');
+        $('#listShowHideAll_' + tmpPath).addClass('icon-plus');
+        ema.shell.hideSections(rowIds);
+      }
+    } catch (e) {
+      ema.shell.handleError('showHideAllSections', e, 'e');
+    }
+  };
+  //End PUBLIC method /showHideAllSections/
   
   return { 
     generateRow : generateRow,
@@ -681,6 +703,7 @@ ema.listgenerator = (function () {
     addRowToSortedList : addRowToSortedList,
     editRowInSortedList : editRowInSortedList,
     removeRowFromSortedList : removeRowFromSortedList,
-    deleteListData : deleteListData
+    deleteListData : deleteListData,
+    showHideAllSections : showHideAllSections
   };
 }());

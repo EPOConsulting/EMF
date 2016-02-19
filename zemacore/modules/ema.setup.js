@@ -74,7 +74,7 @@ ema.setup = (function () {
     try {
       generateHtml();
       ema.formgenerator.generateFooter(false, false, '', true, 'lblsave', 'ema.setup.saveSetup();');
-      ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'));
+      ema.model.loadLanguagePattern(ema.shell.getStateMapValue('selected_language'), false);
     } catch (e) {
       ema.shell.handleError('ema.setup.onModuleLoad', e, 'e');
     }
@@ -96,10 +96,13 @@ ema.setup = (function () {
   switchLanguage = function (elem) {
     try {
       var language = (elem[elem.selectedIndex].value).toLowerCase();
+      
+      ema.shell.resetContentDivs();
       ema.shell.setSelectedLanguage(language);
       ema.model.saveToLocalStorage('sel_language', language);
       ema.shell.resetLanguage();
-      ema.model.loadLanguagePattern(language);
+      ema.model.loadLanguagePattern(language, true);
+      ema.shell.loadKeyValues();
     } catch (e) {
       ema.shell.handleError('switchLanguage', e, 'e');
     } 

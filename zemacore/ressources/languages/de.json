@@ -19,7 +19,9 @@
 		"lblimgreset":"<i class=\"icon-cancel\"></i>",
 		"lblbuttondelete":"l&ouml;schen",
 		"lblbuttonproceed":"Fortsetzen<i class=\"icon-ok\"></i>",
+		"lblbuttonexit":"App beenden<i class=\"icon-ok\"></i>",
 		"lblconfirm":"Die von Ihnen erfassten Daten wurden noch nicht gespeichert!</br>Wenn Sie fortfahren kann es zu Datenverlust kommen!",
+		"lblautosave":"Es wurden gespeicherte Daten gefunden!</br>Wollen Sie die Bearbeitung fortsetzen?",
 		"lbllogoutconfirm":"Wollen Sie ausloggen?",
 		"lblsystem":"System",
 		"lblonline":"<i class=\"icon-wifi\"></i>Online",
@@ -55,7 +57,11 @@
 		"lblto":"bis",
 		"lblinvaliduser":"Der eingegebene Benutzername ist ung&uuml;ltig!",
 		"lblproceed":"Weiter",
-		"lblsave":"Speichern"
+		"lblsave":"Speichern",
+		"lblselect":"---Ausw&auml;hlen---",
+		"lblautosaveactive":"Autosave ist aktiv",
+		"lblautosaveinactive":"Autosave ist inaktiv",
+		"lbllastautosave":"letzte Speicherung"
 	},
     "errors":
     {
@@ -87,6 +93,7 @@
       	"errloadAuftrag":"Es konnte kein Auftrag zu dieser Nummer gefunden werden!",
       	"errloadAuftragVideo":"Um mit der Beareitung fortfahren zu k&ouml;nnen muss ein Video aufgenommen werden!",
       	"errCameraAccess":"Sie m&uuml;ssen den Zugriff auf die Kamera erlauben um Bilder aufnehmen zu k&ouml;nnen!",
+      	"errFunctionNotAllowed":"Mit diesem Browser ist diese Aktion nicht m&ouml;glich!",
       	"errVideoRecording":"Mit diesem Browser sind keine Videoaufnahmen m&ouml;glich!"
 	},
     "messages":
